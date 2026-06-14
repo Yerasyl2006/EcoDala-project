@@ -5,6 +5,7 @@ sealed class EcoDalaRoute(val route: String) {
     data object Login : EcoDalaRoute("login")
     data object Register : EcoDalaRoute("register")
     data object ForgotPassword : EcoDalaRoute("forgot-password")
+    data object EmailVerification : EcoDalaRoute("email-verification")
 
     data object Home : EcoDalaRoute("home")
     data object Map : EcoDalaRoute("map")

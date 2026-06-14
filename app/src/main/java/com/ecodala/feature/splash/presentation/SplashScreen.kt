@@ -1,7 +1,12 @@
 ﻿package com.ecodala.feature.splash.presentation
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -139,21 +144,85 @@ private fun EcoLogo(
     logoSize: Dp,
     modifier: Modifier = Modifier
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "splashLogoMotion")
+    val ringRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2_400, easing = LinearEasing)
+        ),
+        label = "logoRingRotation"
+    )
+    val leafRotation by infiniteTransition.animateFloat(
+        initialValue = -8f,
+        targetValue = 8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "logoLeafRotation"
+    )
+    val logoScale by infiniteTransition.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1_050, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "logoScale"
+    )
+
     Box(
         modifier = modifier.size(logoSize),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(
-                color = Color.White,
-                radius = size.minDimension / 2,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx())
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .rotate(ringRotation)
+        ) {
+            val strokeWidth = 4.dp.toPx()
+            val inset = strokeWidth / 2
+            val arrowColor = Color.White
+
+            drawArc(
+                color = Color.White.copy(alpha = 0.22f),
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = Size(size.width - strokeWidth, size.height - strokeWidth),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
             )
+
+            drawArc(
+                color = arrowColor,
+                startAngle = -55f,
+                sweepAngle = 275f,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = Size(size.width - strokeWidth, size.height - strokeWidth),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+            )
+
+            val arrowTip = Offset(size.width * 0.15f, size.height * 0.80f)
+            val arrowHead = Path().apply {
+                moveTo(arrowTip.x, arrowTip.y)
+                lineTo(arrowTip.x + 2.dp.toPx(), arrowTip.y - 15.dp.toPx())
+                lineTo(arrowTip.x + 14.dp.toPx(), arrowTip.y - 5.dp.toPx())
+                close()
+            }
+            drawPath(path = arrowHead, color = arrowColor)
         }
 
         Box(
             modifier = Modifier
                 .size(58.dp)
+                .graphicsLayer {
+                    scaleX = logoScale
+                    scaleY = logoScale
+                    rotationZ = leafRotation
+                }
                 .background(Color.White, CircleShape),
             contentAlignment = Alignment.Center
         ) {

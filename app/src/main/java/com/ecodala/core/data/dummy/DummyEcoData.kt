@@ -6,6 +6,8 @@ import com.ecodala.core.domain.model.ChallengeStatus
 import com.ecodala.core.domain.model.ChallengeType
 import com.ecodala.core.domain.model.EcoUser
 import com.ecodala.core.domain.model.LeaderboardEntry
+import com.ecodala.core.domain.model.PointsEvent
+import com.ecodala.core.domain.model.PointsSource
 import com.ecodala.core.domain.model.RecyclingPoint
 import com.ecodala.core.domain.model.ScannerResult
 import com.ecodala.core.domain.model.TreeGrowthEvent
@@ -54,7 +56,7 @@ object DummyEcoData {
             longitude = 76.955188,
             rating = 4.7,
             distanceMeters = 950,
-            acceptedWasteTypes = listOf(WasteType.Plastic, WasteType.Glass, WasteType.Metal),
+            acceptedWasteTypes = listOf(WasteType.Glass, WasteType.Plastic, WasteType.Metal),
             rewardPoints = 18
         ),
         RecyclingPoint(
@@ -225,5 +227,17 @@ object DummyEcoData {
         wasteType = WasteType.Plastic,
         confidence = 0.94f,
         disposalHint = "Put clean plastic into the nearest plastic collection point."
+    )
+
+    val pointsLedger = listOf(
+        PointsEvent("points-1", currentUser.id, PointsSource.WasteSubmission, "Plastic waste submitted", 50, "2026-06", "Today, 10:24"),
+        PointsEvent("points-2", currentUser.id, PointsSource.WasteSubmission, "Paper waste submitted", 30, "2026-06", "Yesterday, 16:10"),
+        PointsEvent("points-3", currentUser.id, PointsSource.ChallengeReward, "Visit a Recycling Point", 15, "2026-06", "Yesterday"),
+        PointsEvent("points-4", currentUser.id, PointsSource.AchievementBonus, "First Recycling bonus", 100, "2026-06", "2 days ago"),
+        PointsEvent("points-5", currentUser.id, PointsSource.WasteSubmission, "Glass bottles submitted", 24, "2026-05", "24 May"),
+        PointsEvent("points-6", currentUser.id, PointsSource.WasteSubmission, "Batteries submitted", 36, "2026-05", "18 May"),
+        PointsEvent("points-7", currentUser.id, PointsSource.WasteSubmission, "Electronics submitted", 45, "2026-05", "15 May"),
+        PointsEvent("points-8", currentUser.id, PointsSource.ChallengeReward, "Weekly recycling streak", 80, "2026-05", "12 May"),
+        PointsEvent("points-9", currentUser.id, PointsSource.AchievementBonus, "100 Points milestone", 465, "2026-04", "April")
     )
 }

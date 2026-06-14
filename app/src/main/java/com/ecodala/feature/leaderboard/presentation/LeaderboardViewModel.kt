@@ -18,7 +18,19 @@ data class FacultyLeaderboardEntry(
 )
 
 class LeaderboardViewModel : ViewModel() {
-    private val _entries = MutableStateFlow(DummyEcoData.leaderboard)
+    private val currentUserPoints = DummyEcoData.pointsLedger
+        .filter { it.userId == DummyEcoData.currentUser.id }
+        .sumOf { it.points }
+
+    private val _entries = MutableStateFlow(
+        DummyEcoData.leaderboard.map { entry ->
+            if (entry.isCurrentUser) {
+                entry.copy(points = currentUserPoints)
+            } else {
+                entry
+            }
+        }
+    )
     val entries: StateFlow<List<LeaderboardEntry>> = _entries
 
     private val _faculties = MutableStateFlow(

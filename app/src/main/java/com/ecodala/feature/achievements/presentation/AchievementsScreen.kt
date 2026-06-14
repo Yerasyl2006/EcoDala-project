@@ -120,11 +120,8 @@ fun AchievementsScreen(
 
                 SectionTitle("In Progress", "${locked.size} remaining")
                 Spacer(modifier = Modifier.height(12.dp))
-                locked.forEachIndexed { index, achievement ->
-                    AchievementCard(
-                        achievement = achievement,
-                        progressPercent = listOf(72, 45, 30).getOrElse(index) { 25 }
-                    )
+                locked.forEach { achievement ->
+                    AchievementCard(achievement = achievement)
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
@@ -256,7 +253,6 @@ private fun SectionTitle(title: String, trailing: String) {
 @Composable
 private fun AchievementCard(
     achievement: Achievement,
-    progressPercent: Int? = null
 ) {
     val visual = achievement.visual()
     val isLocked = !achievement.isUnlocked
@@ -315,15 +311,27 @@ private fun AchievementCard(
                 )
                 Spacer(modifier = Modifier.height(7.dp))
                 if (achievement.isUnlocked) {
-                    Text(
-                        text = achievement.unlockedAt.orEmpty(),
-                        color = EcoGreen,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = achievement.unlockedAt.orEmpty(),
+                            color = EcoGreen,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "+${achievement.bonusPoints} pts",
+                            color = EcoGreen,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 } else {
                     LinearProgressIndicator(
-                        progress = { (progressPercent ?: 0) / 100f },
+                        progress = { achievement.progressPercent / 100f },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(5.dp)
@@ -332,11 +340,22 @@ private fun AchievementCard(
                         trackColor = Color(0xFFE0E6DF)
                     )
                     Spacer(modifier = Modifier.height(5.dp))
-                    Text(
-                        text = LocalEcoStrings.current.completePercent(progressPercent ?: 0),
-                        color = Color(0xFF758077),
-                        fontSize = 11.sp
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = LocalEcoStrings.current.completePercent(achievement.progressPercent),
+                            color = Color(0xFF758077),
+                            fontSize = 11.sp
+                        )
+                        Text(
+                            text = "+${achievement.bonusPoints} pts",
+                            color = Color(0xFF758077),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -356,6 +375,8 @@ private fun Achievement.visual(): AchievementVisual {
         "tree" -> AchievementVisual(Icons.Filled.Yard, Color(0xFFE5F6EA), EcoGreen)
         "map" -> AchievementVisual(Icons.Filled.Map, Color(0xFFE4F0FF), Color(0xFF3D78D8))
         "scanner" -> AchievementVisual(Icons.Filled.CameraAlt, Color(0xFFEBD9FF), Color(0xFF8D55E6))
+        "streak" -> AchievementVisual(Icons.Filled.EmojiEvents, Color(0xFFFFF5D9), Color(0xFFD59A12))
+        "plastic" -> AchievementVisual(Icons.Filled.Recycling, Color(0xFFE6F7F0), Color(0xFF0F8C65))
         else -> AchievementVisual(Icons.Filled.Recycling, Color(0xFFFFF5D9), Color(0xFFD59A12))
     }
 }

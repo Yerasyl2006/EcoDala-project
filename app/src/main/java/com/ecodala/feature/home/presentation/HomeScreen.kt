@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Recycling
 import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -56,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ecodala.core.localization.LocalEcoStrings
+import com.ecodala.core.settings.AppSettingsStore
 import com.ecodala.core.ui.adaptive.horizontalScreenPadding
 import com.ecodala.core.ui.adaptive.isCompactHeight
 import com.ecodala.core.ui.adaptive.isExtraCompactHeight
@@ -76,9 +79,11 @@ fun HomeRoute(
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val settings by AppSettingsStore.settings.collectAsState()
 
     HomeScreen(
         uiState = uiState,
+        selectedLanguageTag = settings.appLanguageTag,
         onMapClick = onMapClick,
         onSubmitClick = onSubmitClick,
         onChallengesClick = onChallengesClick,
@@ -87,6 +92,9 @@ fun HomeRoute(
         onRatingClick = onLeaderboardClick,
         onTreeClick = onTreeClick,
         onAchievementsClick = onAchievementsClick,
+        onLanguageSelected = { languageTag ->
+            AppSettingsStore.update { it.copy(appLanguageTag = languageTag) }
+        },
         modifier = modifier
     )
 }
@@ -94,6 +102,7 @@ fun HomeRoute(
 @Composable
 fun HomeScreen(
     uiState: HomeUiState,
+    selectedLanguageTag: String = "en",
     onMapClick: () -> Unit,
     onSubmitClick: () -> Unit,
     onChallengesClick: () -> Unit,
@@ -102,6 +111,7 @@ fun HomeScreen(
     onRatingClick: () -> Unit,
     onTreeClick: () -> Unit,
     onAchievementsClick: () -> Unit,
+    onLanguageSelected: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val strings = LocalEcoStrings.current
@@ -126,6 +136,8 @@ fun HomeScreen(
         ) {
             HomeHeader(
                 userName = uiState.userName,
+                selectedLanguageTag = selectedLanguageTag,
+                onLanguageSelected = onLanguageSelected,
                 onNotificationsClick = onNotificationsClick
             )
 
@@ -137,6 +149,16 @@ fun HomeScreen(
                 level = uiState.level,
                 compactHeight = compactHeight,
                 onClick = onRatingClick
+            )
+
+            Spacer(modifier = Modifier.height(smallGap))
+
+            MonthlyImpactCard(
+                points = uiState.thisMonthPoints,
+                recycledKg = uiState.thisMonthKg,
+                submissions = uiState.thisMonthSubmissions,
+                streakDays = uiState.streakDays,
+                nextRewardPoints = uiState.nextStreakRewardPoints
             )
 
             Spacer(modifier = Modifier.height(smallGap))
@@ -179,8 +201,122 @@ fun HomeScreen(
 }
 
 @Composable
+private fun MonthlyImpactCard(
+    points: Int,
+    recycledKg: Double,
+    submissions: Int,
+    streakDays: Int,
+    nextRewardPoints: Int
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "This Month Impact",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "$streakDays day streak - next +$nextRewardPoints pts",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(EcoGreen.copy(alpha = 0.12f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Whatshot,
+                        contentDescription = null,
+                        tint = EcoGreen,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ImpactMetric(
+                    icon = Icons.Filled.Recycling,
+                    value = "${recycledKg.toInt()} kg",
+                    label = "Recycled",
+                    modifier = Modifier.weight(1f)
+                )
+                ImpactMetric(
+                    icon = Icons.Filled.Spa,
+                    value = "+$points",
+                    label = "Points",
+                    modifier = Modifier.weight(1f)
+                )
+                ImpactMetric(
+                    icon = Icons.Filled.TaskAlt,
+                    value = submissions.toString(),
+                    label = "Submits",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImpactMetric(
+    icon: ImageVector,
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(vertical = 12.dp, horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = EcoGreen,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.height(5.dp))
+        Text(
+            text = value,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
 private fun HomeHeader(
     userName: String,
+    selectedLanguageTag: String,
+    onLanguageSelected: (String) -> Unit,
     onNotificationsClick: () -> Unit
 ) {
     val strings = LocalEcoStrings.current
@@ -192,30 +328,72 @@ private fun HomeHeader(
     ) {
         Text(
             text = strings.hello(userName),
+            modifier = Modifier.weight(1f),
             color = EcoGreen,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
 
-        Box {
-            IconButton(
-                onClick = onNotificationsClick,
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Notifications,
-                    contentDescription = "Notifications",
-                    tint = EcoGreen,
-                    modifier = Modifier.size(20.dp)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HomeLanguageSwitcher(
+                selectedLanguageTag = selectedLanguageTag,
+                onLanguageSelected = onLanguageSelected
+            )
+
+            Box {
+                IconButton(
+                    onClick = onNotificationsClick,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Notifications,
+                        contentDescription = "Notifications",
+                        tint = EcoGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(10.dp)
+                        .background(Color(0xFFE53935), CircleShape)
                 )
             }
-            Box(
+        }
+    }
+}
+
+@Composable
+private fun HomeLanguageSwitcher(
+    selectedLanguageTag: String,
+    onLanguageSelected: (String) -> Unit
+) {
+    val options = listOf("en" to "EN", "ru" to "RU", "kk" to "KZ")
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        options.forEach { (tag, label) ->
+            Text(
+                text = label,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(10.dp)
-                    .background(Color(0xFFE53935), CircleShape)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(if (selectedLanguageTag == tag) EcoGreen else Color.Transparent)
+                    .clickable { onLanguageSelected(tag) }
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                color = if (selectedLanguageTag == tag) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
             )
         }
     }

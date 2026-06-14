@@ -1,9 +1,9 @@
 package com.ecodala.feature.auth.presentation
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,14 +29,18 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -66,12 +71,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ecodala.core.domain.model.SocialAuthProvider
 import com.ecodala.core.localization.LocalEcoStrings
 import com.ecodala.core.ui.adaptive.horizontalScreenPadding
 import com.ecodala.core.ui.adaptive.isCompactHeight
 import com.ecodala.core.ui.adaptive.isExtraCompactHeight
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
+import com.ecodala.R
 
 @Composable
 fun LoginRoute(
@@ -87,7 +94,9 @@ fun LoginRoute(
         uiState = uiState,
         onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
-        onLoginClick = onLoginClick,
+        onRememberMeChange = viewModel::onRememberMeChange,
+        onLoginClick = { viewModel.onLoginSubmit(onLoginClick) },
+        onSocialLoginClick = { provider -> viewModel.onSocialLoginSubmit(provider, onLoginClick) },
         onRegisterClick = onRegisterClick,
         onForgotPasswordClick = onForgotPasswordClick,
         modifier = modifier
@@ -99,7 +108,9 @@ fun LoginScreen(
     uiState: AuthUiState,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onRememberMeChange: (Boolean) -> Unit,
     onLoginClick: () -> Unit,
+    onSocialLoginClick: (SocialAuthProvider) -> Unit,
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -118,6 +129,7 @@ fun LoginScreen(
     val sectionGap = if (compactHeight) 14.dp else 24.dp
     val socialGap = if (compactHeight) 12.dp else 20.dp
     val bottomGap = if (compactHeight) 14.dp else 36.dp
+    var pendingSocialProvider by remember { mutableStateOf<SocialAuthProvider?>(null) }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -145,7 +157,7 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = strings.welcomeBack,
+                    text = strings.login,
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.headlineSmall,
@@ -183,17 +195,18 @@ fun LoginScreen(
                     onValueChange = onPasswordChange
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                Text(
-                    text = strings.forgotPassword,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onForgotPasswordClick),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelMedium,
-                    textAlign = TextAlign.End
+                LoginOptionsRow(
+                    rememberMe = uiState.rememberMe,
+                    onRememberMeChange = onRememberMeChange,
+                    onForgotPasswordClick = onForgotPasswordClick
                 )
+
+                uiState.errorMessage?.let { message ->
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LoginErrorMessage(message = message)
+                }
 
                 Spacer(modifier = Modifier.height(sectionGap))
 
@@ -209,7 +222,7 @@ fun LoginScreen(
                     )
                 ) {
                     Text(
-                        text = strings.login,
+                        text = if (uiState.isLoading) "Signing in..." else strings.login,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -220,7 +233,11 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(socialGap))
 
-                GoogleSignInButton(onClick = {})
+                SocialLoginRow(
+                    onSocialLoginClick = { provider ->
+                        pendingSocialProvider = provider
+                    }
+                )
 
                 Spacer(modifier = Modifier.height(bottomGap))
 
@@ -229,6 +246,17 @@ fun LoginScreen(
                     modifier = Modifier.padding(bottom = if (compactHeight) 12.dp else 34.dp)
                 )
             }
+        }
+
+        pendingSocialProvider?.let { provider ->
+            SocialAuthDemoDialog(
+                provider = provider,
+                onDismiss = { pendingSocialProvider = null },
+                onContinue = {
+                    pendingSocialProvider = null
+                    onSocialLoginClick(provider)
+                }
+            )
         }
     }
 }
@@ -336,6 +364,66 @@ private fun PasswordTextField(
 }
 
 @Composable
+private fun LoginOptionsRow(
+    rememberMe: Boolean,
+    onRememberMeChange: (Boolean) -> Unit,
+    onForgotPasswordClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onRememberMeChange(!rememberMe) },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = rememberMe,
+                onCheckedChange = onRememberMeChange,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = EcoGreen,
+                    uncheckedColor = MaterialTheme.colorScheme.outline
+                )
+            )
+            Text(
+                text = "Remember me",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+
+        Text(
+            text = LocalEcoStrings.current.forgotPassword,
+            modifier = Modifier.clickable(onClick = onForgotPasswordClick),
+            color = EcoGreen,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+@Composable
+private fun LoginErrorMessage(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
 private fun OrDivider() {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -360,10 +448,49 @@ private fun OrDivider() {
 }
 
 @Composable
-private fun GoogleSignInButton(onClick: () -> Unit) {
+private fun SocialLoginRow(
+    onSocialLoginClick: (SocialAuthProvider) -> Unit
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        SocialSignInButton(
+            label = "Google",
+            leadingContent = {
+                Text(
+                    text = "G",
+                    color = Color(0xFF4285F4),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            onClick = { onSocialLoginClick(SocialAuthProvider.Google) },
+            modifier = Modifier.weight(1f)
+        )
+        SocialSignInButton(
+            label = "Apple",
+            leadingContent = {
+                SocialProviderLogo(
+                    provider = SocialAuthProvider.Apple,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            onClick = { onSocialLoginClick(SocialAuthProvider.Apple) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun SocialSignInButton(
+    label: String,
+    leadingContent: @Composable () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
             .height(56.dp)
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
@@ -372,19 +499,96 @@ private fun GoogleSignInButton(onClick: () -> Unit) {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        leadingContent()
+        Spacer(modifier = Modifier.size(10.dp))
         Text(
-            text = "G",
-            color = Color(0xFF4285F4),
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.size(12.dp))
-        Text(
-            text = LocalEcoStrings.current.continueWithGoogle,
+            text = label,
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold
         )
+    }
+}
+
+@Composable
+private fun SocialAuthDemoDialog(
+    provider: SocialAuthProvider,
+    onDismiss: () -> Unit,
+    onContinue: () -> Unit
+) {
+    val providerName = when (provider) {
+        SocialAuthProvider.Google -> "Google"
+        SocialAuthProvider.Apple -> "Apple"
+    }
+    val providerEmail = when (provider) {
+        SocialAuthProvider.Google -> "google.user@ecodala.com"
+        SocialAuthProvider.Apple -> "apple.user@ecodala.com"
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            SocialProviderLogo(provider = provider, modifier = Modifier.size(34.dp))
+        },
+        title = {
+            Text(
+                text = "Continue with $providerName",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "EcoDala will use this demo $providerName account for sign in.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = providerEmail,
+                    color = EcoGreen,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onContinue) {
+                Text(text = "Continue", color = EcoGreen, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+@Composable
+private fun SocialProviderLogo(
+    provider: SocialAuthProvider,
+    modifier: Modifier = Modifier
+) {
+    when (provider) {
+        SocialAuthProvider.Google -> {
+            Text(
+                text = "G",
+                color = Color(0xFF4285F4),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = modifier
+            )
+        }
+        SocialAuthProvider.Apple -> {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_apple_logo),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = modifier
+            )
+        }
     }
 }
 
@@ -504,7 +708,9 @@ private fun LoginScreenPreview() {
             uiState = AuthUiState(),
             onEmailChange = {},
             onPasswordChange = {},
+            onRememberMeChange = {},
             onLoginClick = {},
+            onSocialLoginClick = {},
             onRegisterClick = {},
             onForgotPasswordClick = {}
         )

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Recycling
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.SupportAgent
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.filled.Yard
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -77,16 +78,18 @@ fun ProfileRoute(
     viewModel: ProfileViewModel = viewModel()
 ) {
     val user by viewModel.user.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     ProfileScreen(
         user = user,
+        uiState = uiState,
         onBackClick = onBackClick,
         onAchievementsClick = onAchievementsClick,
         onRecyclingHistoryClick = onRecyclingHistoryClick,
         onNotificationsClick = onNotificationsClick,
         onSettingsClick = onSettingsClick,
         onSupportClick = onSupportClick,
-        onLogoutClick = onLogoutClick,
+        onLogoutClick = { viewModel.logout(onLogoutClick) },
         modifier = modifier
     )
 }
@@ -94,6 +97,7 @@ fun ProfileRoute(
 @Composable
 fun ProfileScreen(
     user: EcoUser,
+    uiState: ProfileUiState = ProfileUiState(),
     onBackClick: () -> Unit,
     onAchievementsClick: () -> Unit,
     onRecyclingHistoryClick: () -> Unit,
@@ -130,7 +134,11 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                StatsRow(user = user)
+                StatsRow(uiState = uiState)
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                StreakStatusCard(uiState = uiState)
 
                 Spacer(modifier = Modifier.height(18.dp))
 
@@ -164,6 +172,51 @@ fun ProfileScreen(
                         fontWeight = FontWeight.Bold
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StreakStatusCard(uiState: ProfileUiState) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .background(EcoGreen.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Whatshot,
+                    contentDescription = null,
+                    tint = EcoGreen,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.size(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "${uiState.streakDays} day active streak",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Next streak reward: +${uiState.nextStreakRewardPoints} pts",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }
@@ -265,7 +318,7 @@ private fun Avatar(userName: String) {
 }
 
 @Composable
-private fun StatsRow(user: EcoUser) {
+private fun StatsRow(uiState: ProfileUiState) {
     val strings = LocalEcoStrings.current
 
     Row(
@@ -274,20 +327,20 @@ private fun StatsRow(user: EcoUser) {
     ) {
         StatCard(
             icon = Icons.Filled.Recycling,
-            value = "45",
+            value = uiState.thisMonthKg.toInt().toString(),
             label = strings.kgWaste,
             modifier = Modifier.weight(1f)
         )
         StatCard(
             icon = Icons.Filled.Spa,
-            value = user.ecoPoints.toString(),
+            value = uiState.totalPoints.toString(),
             label = strings.pointsLabel,
             modifier = Modifier.weight(1f),
             highlighted = true
         )
         StatCard(
             icon = Icons.Filled.Yard,
-            value = "2",
+            value = uiState.trees.toString(),
             label = strings.trees,
             modifier = Modifier.weight(1f)
         )

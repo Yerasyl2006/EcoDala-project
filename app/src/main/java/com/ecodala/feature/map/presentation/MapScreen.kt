@@ -42,14 +42,21 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.ElectricScooter
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.PedalBike
 import androidx.compose.material.icons.filled.Recycling
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.LocalTaxi
+import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -99,7 +106,16 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.Priority
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.tasks.CancellationTokenSource
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
+import java.net.URL
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -141,23 +157,33 @@ fun MapScreen(
     var hasLocationPermission by remember {
         mutableStateOf(context.hasLocationPermission())
     }
+    var deviceLocationEnabled by remember {
+        mutableStateOf(context.isDeviceLocationEnabled())
+    }
     var userLocation by remember { mutableStateOf<GeoPoint?>(null) }
     var locationServiceDisabled by remember {
-        mutableStateOf(hasLocationPermission && !context.isDeviceLocationEnabled())
-    }
-    var showLocationPermissionPrompt by remember {
-        mutableStateOf(!hasLocationPermission)
+        mutableStateOf(hasLocationPermission && !deviceLocationEnabled)
     }
     val initialPoint = uiState.selectedPoint ?: uiState.filteredPoints.firstOrNull()
     val initialGeoPoint = initialPoint?.toGeoPoint() ?: GeoPoint(43.238949, 76.889709)
     var mapView by remember { mutableStateOf<MapView?>(null) }
     val coroutineScope = rememberCoroutineScope()
     var isPreviewExpanded by remember { mutableStateOf(false) }
+    var selectedRouteMode by remember { mutableStateOf(RouteMode.Walk) }
+    var streetRoute by remember { mutableStateOf<StreetRouteResult?>(null) }
+    var routeLoading by remember { mutableStateOf(false) }
+    var routeError by remember { mutableStateOf<String?>(null) }
     val fusedLocationClient = remember(context) {
         LocationServices.getFusedLocationProviderClient(context)
     }
     val locationPermissionPrefs = remember(context) {
         context.getSharedPreferences("map_permission", Context.MODE_PRIVATE)
+    }
+    var showLocationPermissionPrompt by remember {
+        mutableStateOf(
+            !hasLocationPermission &&
+                locationPermissionPrefs.getString(LOCATION_CHOICE_KEY, null) != LOCATION_CHOICE_NEVER
+        )
     }
 
     fun updateUserLocation(location: Location?) {
@@ -191,7 +217,6 @@ fun MapScreen(
         if (!context.hasLocationPermission()) return
         if (!context.isDeviceLocationEnabled()) {
             locationServiceDisabled = true
-            context.openLocationSettings()
             return
         }
 
@@ -221,7 +246,6 @@ fun MapScreen(
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        locationPermissionPrefs.edit().putBoolean("asked_once", true).apply()
         hasLocationPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
 
@@ -231,15 +255,11 @@ fun MapScreen(
     }
 
     fun requestOrMoveToUserLocation() {
+        deviceLocationEnabled = context.isDeviceLocationEnabled()
         if (hasLocationPermission) {
             loadUserLocation()
         } else {
-            locationPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
+            showLocationPermissionPrompt = true
         }
     }
 
@@ -251,11 +271,12 @@ fun MapScreen(
 
     DisposableEffect(lifecycleOwner, hasLocationPermission) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && hasLocationPermission) {
-                if (context.isDeviceLocationEnabled()) {
+            if (event == Lifecycle.Event.ON_RESUME) {
+                deviceLocationEnabled = context.isDeviceLocationEnabled()
+                if (hasLocationPermission && deviceLocationEnabled) {
                     locationServiceDisabled = false
                     loadUserLocation()
-                } else {
+                } else if (hasLocationPermission) {
                     locationServiceDisabled = true
                 }
             }
@@ -282,6 +303,31 @@ fun MapScreen(
         }
     }
 
+    LaunchedEffect(
+        uiState.routeDestination?.id,
+        userLocation?.latitude,
+        userLocation?.longitude,
+        selectedRouteMode
+    ) {
+        val start = userLocation
+        val destination = uiState.routeDestination
+        if (start == null || destination == null) {
+            streetRoute = null
+            routeLoading = false
+            routeError = null
+            return@LaunchedEffect
+        }
+
+        routeLoading = true
+        routeError = null
+        streetRoute = runCatching {
+            fetchStreetRoute(start, destination.toGeoPoint(), selectedRouteMode)
+        }.onFailure {
+            routeError = "Street route unavailable, showing approximate route"
+        }.getOrNull()
+        routeLoading = false
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -294,6 +340,7 @@ fun MapScreen(
             selectedPoint = uiState.selectedPoint,
             routeDestination = uiState.routeDestination,
             userLocation = userLocation,
+            streetRoutePoints = streetRoute?.points.orEmpty(),
             onMapReady = { mapView = it },
             onPointSelected = onPointSelected
         )
@@ -337,30 +384,57 @@ fun MapScreen(
 
         if (
             showLocationPermissionPrompt &&
-            !hasLocationPermission &&
-            !locationPermissionPrefs.getBoolean("asked_once", false)
+            !hasLocationPermission
         ) {
-            LocationPermissionPromptCard(
-                onAllowClick = {
-                    showLocationPermissionPrompt = false
-                    locationPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
+            if (!deviceLocationEnabled) {
+                LocationEnablePromptCard(
+                    onTurnOnClick = {
+                        context.openLocationSettings()
+                    },
+                    onNeverClick = {
+                        locationPermissionPrefs.edit()
+                            .putString(LOCATION_CHOICE_KEY, LOCATION_CHOICE_NEVER)
+                            .apply()
+                        showLocationPermissionPrompt = false
+                    },
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 24.dp)
+                )
+            } else {
+                LocationChoicePromptCard(
+                    onAlwaysClick = {
+                        locationPermissionPrefs.edit()
+                            .putString(LOCATION_CHOICE_KEY, LOCATION_CHOICE_ALWAYS)
+                            .apply()
+                        showLocationPermissionPrompt = false
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
                         )
-                    )
-                },
-                onLaterClick = {
-                    showLocationPermissionPrompt = false
-                },
-                onNeverClick = {
-                    locationPermissionPrefs.edit().putBoolean("asked_once", true).apply()
-                    showLocationPermissionPrompt = false
-                },
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = 24.dp)
-            )
+                    },
+                    onOneTimeClick = {
+                        showLocationPermissionPrompt = false
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    },
+                    onNeverClick = {
+                        locationPermissionPrefs.edit()
+                            .putString(LOCATION_CHOICE_KEY, LOCATION_CHOICE_NEVER)
+                            .apply()
+                        showLocationPermissionPrompt = false
+                    },
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 24.dp)
+                )
+            }
         }
 
         MapFloatingControls(
@@ -381,9 +455,23 @@ fun MapScreen(
             RecyclingPointPreviewCard(
                 point = point,
                 onClick = { onPointClick(point) },
-                onRouteClick = { onRouteClick(point) },
+                onRouteClick = {
+                    if (userLocation == null) {
+                        requestOrMoveToUserLocation()
+                    } else {
+                        onRouteClick(point)
+                        isPreviewExpanded = true
+                    }
+                },
                 expanded = isPreviewExpanded,
                 onExpandedChange = { isPreviewExpanded = it },
+                userLocation = userLocation,
+                routeActive = uiState.routeDestination?.id == point.id,
+                selectedRouteMode = selectedRouteMode,
+                onRouteModeSelected = { selectedRouteMode = it },
+                streetRoute = streetRoute,
+                routeLoading = routeLoading,
+                routeError = routeError,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(horizontal = 0.dp)
@@ -399,6 +487,7 @@ private fun OpenStreetMapView(
     selectedPoint: RecyclingPoint?,
     routeDestination: RecyclingPoint?,
     userLocation: GeoPoint?,
+    streetRoutePoints: List<GeoPoint>,
     onMapReady: (MapView) -> Unit,
     onPointSelected: (RecyclingPoint) -> Unit,
     modifier: Modifier = Modifier
@@ -423,13 +512,19 @@ private fun OpenStreetMapView(
             map.overlays.clear()
 
             routeDestination?.let { destination ->
-                map.overlays.add(
-                    Polyline().apply {
-                        setPoints(buildRoutePreviewPoints(destination))
-                        outlinePaint.color = android.graphics.Color.rgb(18, 129, 54)
-                        outlinePaint.strokeWidth = 11f
-                    }
-                )
+                userLocation?.let { start ->
+                    map.overlays.add(
+                        Polyline().apply {
+                            setPoints(
+                                streetRoutePoints.ifEmpty {
+                                    buildRoutePreviewPoints(start, destination)
+                                }
+                            )
+                            outlinePaint.color = android.graphics.Color.rgb(18, 129, 54)
+                            outlinePaint.strokeWidth = 11f
+                        }
+                    )
+                }
             }
 
             userLocation?.let { location ->
@@ -496,6 +591,156 @@ private fun MapFloatingControls(
                     modifier = Modifier.size(24.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun LocationEnablePromptCard(
+    onTurnOnClick: () -> Unit,
+    onNeverClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .background(Color(0xFFE8F5E9), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.LocationOn,
+                    contentDescription = null,
+                    tint = EcoGreen,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Turn on phone location",
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "First enable location on your phone. Then EcoDala will ask permission and show your exact position on the map.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LocationPromptButton(
+                label = "Turn on phone location",
+                containerColor = EcoGreen,
+                contentColor = Color.White,
+                onClick = onTurnOnClick
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Never",
+                modifier = Modifier.clickable(onClick = onNeverClick),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun LocationChoicePromptCard(
+    onAlwaysClick: () -> Unit,
+    onOneTimeClick: () -> Unit,
+    onNeverClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .background(Color(0xFFE3F2FD), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.MyLocation,
+                    contentDescription = null,
+                    tint = Color(0xFF2196F3),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Location access",
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Choose how EcoDala can use your location on the map. After your choice, Android will ask for system permission.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LocationPromptButton(
+                label = "Always",
+                containerColor = EcoGreen,
+                contentColor = Color.White,
+                onClick = onAlwaysClick
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            LocationPromptButton(
+                label = "One time",
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                onClick = onOneTimeClick
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Never",
+                modifier = Modifier.clickable(onClick = onNeverClick),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
@@ -922,6 +1167,13 @@ private fun RecyclingPointPreviewCard(
     onRouteClick: () -> Unit,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
+    userLocation: GeoPoint?,
+    routeActive: Boolean,
+    selectedRouteMode: RouteMode,
+    onRouteModeSelected: (RouteMode) -> Unit,
+    streetRoute: StreetRouteResult?,
+    routeLoading: Boolean,
+    routeError: String?,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalEcoStrings.current
@@ -1062,6 +1314,21 @@ private fun RecyclingPointPreviewCard(
                     modifier = Modifier.weight(1f)
                 )
             }
+
+            if (routeActive) {
+                Spacer(modifier = Modifier.height(14.dp))
+                userLocation?.let { start ->
+                    RouteEstimateSection(
+                        start = start,
+                        destination = point,
+                        selectedMode = selectedRouteMode,
+                        onModeSelected = onRouteModeSelected,
+                        streetRoute = streetRoute,
+                        routeLoading = routeLoading,
+                        routeError = routeError
+                    )
+                }
+            }
         }
     }
 }
@@ -1094,6 +1361,137 @@ private fun MapCardActionButton(
             color = Color.White,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun RouteEstimateSection(
+    start: GeoPoint,
+    destination: RecyclingPoint,
+    selectedMode: RouteMode,
+    onModeSelected: (RouteMode) -> Unit,
+    streetRoute: StreetRouteResult?,
+    routeLoading: Boolean,
+    routeError: String?
+) {
+    val estimate = remember(start.latitude, start.longitude, destination.id, selectedMode, streetRoute) {
+        buildRouteEstimate(start, destination.toGeoPoint(), selectedMode, streetRoute)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            RouteMode.values().forEach { mode ->
+                RouteModeChip(
+                    mode = mode,
+                    selected = selectedMode == mode,
+                    onClick = { onModeSelected(mode) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (routeLoading || routeError != null) {
+            Text(
+                text = if (routeLoading) "Building street route..." else routeError.orEmpty(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            RouteMetricTile(
+                title = "Distance",
+                value = estimate.distanceLabel,
+                modifier = Modifier.weight(1f)
+            )
+            RouteMetricTile(
+                title = "Time",
+                value = estimate.timeLabel,
+                modifier = Modifier.weight(1f)
+            )
+            RouteMetricTile(
+                title = selectedMode.extraTitle,
+                value = estimate.extraLabel,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RouteModeChip(
+    mode: RouteMode,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val containerColor = if (selected) EcoGreen else MaterialTheme.colorScheme.surface
+    val contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+
+    Row(
+        modifier = Modifier
+            .height(34.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(containerColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = mode.icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.size(5.dp))
+        Text(
+            text = mode.label,
+            color = contentColor,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun RouteMetricTile(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .height(58.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = title,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall
+        )
+        Text(
+            text = value,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
         )
     }
 }
@@ -1197,6 +1595,10 @@ private fun DrawScope.drawMapRoads() {
         drawPath(path, minorRoadColor, style = minorRoad)
     }
 }
+
+private const val LOCATION_CHOICE_KEY = "location_choice"
+private const val LOCATION_CHOICE_ALWAYS = "always"
+private const val LOCATION_CHOICE_NEVER = "never"
 
 private fun Context.hasLocationPermission(): Boolean {
     val fineLocation = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -1316,8 +1718,7 @@ private fun WasteType.markerLetter(): String {
 
 private fun RecyclingPoint.toGeoPoint(): GeoPoint = GeoPoint(latitude, longitude)
 
-private fun buildRoutePreviewPoints(destination: RecyclingPoint): List<GeoPoint> {
-    val start = GeoPoint(43.238949, 76.889709)
+private fun buildRoutePreviewPoints(start: GeoPoint, destination: RecyclingPoint): List<GeoPoint> {
     val end = destination.toGeoPoint()
     val midPoint = GeoPoint(
         (start.latitude + end.latitude) / 2 + 0.006,
@@ -1326,6 +1727,145 @@ private fun buildRoutePreviewPoints(destination: RecyclingPoint): List<GeoPoint>
 
     return listOf(start, midPoint, end)
 }
+
+private enum class RouteMode(
+    val label: String,
+    val speedKmh: Double,
+    val roadFactor: Double,
+    val extraTitle: String,
+    val icon: ImageVector
+) {
+    Walk("Walk", 4.8, 1.18, "Steps", Icons.Filled.DirectionsWalk),
+    Bike("Bike", 14.0, 1.14, "Calories", Icons.Filled.PedalBike),
+    Scooter("Scooter", 18.0, 1.12, "Battery", Icons.Filled.ElectricScooter),
+    Motorcycle("Moto", 32.0, 1.25, "Fuel", Icons.Filled.TwoWheeler),
+    Car("Car", 28.0, 1.28, "Fuel", Icons.Filled.DirectionsCar),
+    Taxi("Taxi", 30.0, 1.28, "Price", Icons.Filled.LocalTaxi),
+    Bus("Bus", 20.0, 1.36, "Stops", Icons.Filled.DirectionsBus)
+}
+
+private data class RouteEstimate(
+    val distanceLabel: String,
+    val timeLabel: String,
+    val extraLabel: String
+)
+
+private data class StreetRouteResult(
+    val points: List<GeoPoint>,
+    val distanceMeters: Double,
+    val durationSeconds: Double
+)
+
+private fun buildRouteEstimate(
+    start: GeoPoint,
+    end: GeoPoint,
+    mode: RouteMode,
+    streetRoute: StreetRouteResult? = null
+): RouteEstimate {
+    val routeDistanceKm = streetRoute?.let { it.distanceMeters / 1000.0 }
+        ?: (haversineDistanceKm(start, end) * mode.roadFactor).coerceAtLeast(0.05)
+    val minutes = if (streetRoute != null && mode.usesTrafficDuration) {
+        (streetRoute.durationSeconds / 60).roundToInt().coerceAtLeast(1)
+    } else {
+        ((routeDistanceKm / mode.speedKmh) * 60).roundToInt().coerceAtLeast(1)
+    }
+
+    return RouteEstimate(
+        distanceLabel = formatDistance(routeDistanceKm),
+        timeLabel = formatMinutes(minutes),
+        extraLabel = mode.extraLabel(routeDistanceKm, minutes)
+    )
+}
+
+private fun haversineDistanceKm(start: GeoPoint, end: GeoPoint): Double {
+    val earthRadiusKm = 6371.0
+    val startLat = Math.toRadians(start.latitude)
+    val endLat = Math.toRadians(end.latitude)
+    val deltaLat = Math.toRadians(end.latitude - start.latitude)
+    val deltaLon = Math.toRadians(end.longitude - start.longitude)
+    val a = sin(deltaLat / 2) * sin(deltaLat / 2) +
+        cos(startLat) * cos(endLat) * sin(deltaLon / 2) * sin(deltaLon / 2)
+    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return earthRadiusKm * c
+}
+
+private fun formatDistance(distanceKm: Double): String {
+    return if (distanceKm < 1.0) {
+        "${(distanceKm * 1000).roundToInt()} m"
+    } else {
+        String.format("%.1f km", distanceKm)
+    }
+}
+
+private fun formatMinutes(minutes: Int): String {
+    return if (minutes < 60) {
+        "$minutes min"
+    } else {
+        val hours = minutes / 60
+        val restMinutes = minutes % 60
+        if (restMinutes == 0) "${hours}h" else "${hours}h ${restMinutes}m"
+    }
+}
+
+private fun RouteMode.extraLabel(distanceKm: Double, minutes: Int): String {
+    return when (this) {
+        RouteMode.Walk -> "${(distanceKm * 1320).roundToInt()} steps"
+        RouteMode.Bike -> "${(distanceKm * 28).roundToInt()} kcal"
+        RouteMode.Scooter -> "${(distanceKm * 7).roundToInt().coerceAtLeast(1)}%"
+        RouteMode.Motorcycle -> String.format("%.1f L", distanceKm * 0.035)
+        RouteMode.Car -> String.format("%.1f L", distanceKm * 0.09)
+        RouteMode.Taxi -> "${estimateTaxiPrice(distanceKm, minutes)} KZT"
+        RouteMode.Bus -> "${(minutes / 7).coerceAtLeast(1)} stops"
+    }
+}
+
+private fun estimateTaxiPrice(distanceKm: Double, minutes: Int): Int {
+    val rawPrice = 450 + distanceKm * 120 + minutes * 18
+    return ((rawPrice / 50).roundToInt() * 50).coerceAtLeast(600)
+}
+
+private suspend fun fetchStreetRoute(
+    start: GeoPoint,
+    end: GeoPoint,
+    mode: RouteMode
+): StreetRouteResult = withContext(Dispatchers.IO) {
+    val url = URL(
+        "https://router.project-osrm.org/route/v1/${mode.osrmProfile}/" +
+            "${start.longitude},${start.latitude};${end.longitude},${end.latitude}" +
+            "?overview=full&geometries=geojson&steps=false"
+    )
+    val json = url.openConnection().run {
+        connectTimeout = 8_000
+        readTimeout = 8_000
+        getInputStream().bufferedReader().use { it.readText() }
+    }
+    val root = JSONObject(json)
+    val routes = root.getJSONArray("routes")
+    if (routes.length() == 0) error("No route found")
+
+    val route = routes.getJSONObject(0)
+    val coordinates = route
+        .getJSONObject("geometry")
+        .getJSONArray("coordinates")
+    val points = buildList {
+        for (index in 0 until coordinates.length()) {
+            val coordinate = coordinates.getJSONArray(index)
+            add(GeoPoint(coordinate.getDouble(1), coordinate.getDouble(0)))
+        }
+    }
+
+    StreetRouteResult(
+        points = points,
+        distanceMeters = route.getDouble("distance"),
+        durationSeconds = route.getDouble("duration")
+    )
+}
+
+private val RouteMode.osrmProfile: String
+    get() = "driving"
+
+private val RouteMode.usesTrafficDuration: Boolean
+    get() = this == RouteMode.Motorcycle || this == RouteMode.Car || this == RouteMode.Taxi
 
 @Preview(showBackground = true, widthDp = 393, heightDp = 852)
 @Composable

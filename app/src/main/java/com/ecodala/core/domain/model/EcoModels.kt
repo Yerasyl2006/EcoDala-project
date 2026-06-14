@@ -99,7 +99,9 @@ data class Achievement(
     val description: String,
     val unlockedAt: String?,
     val iconName: String,
-    val isUnlocked: Boolean
+    val isUnlocked: Boolean,
+    val progressPercent: Int = if (isUnlocked) 100 else 0,
+    val bonusPoints: Int = 0
 )
 
 data class ScannerResult(

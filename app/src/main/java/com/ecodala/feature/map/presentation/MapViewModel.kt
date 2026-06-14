@@ -12,7 +12,7 @@ data class MapUiState(
     val searchQuery: String = "",
     val allPoints: List<RecyclingPoint> = DummyEcoData.recyclingPoints,
     val selectedWasteType: WasteType? = null,
-    val selectedPoint: RecyclingPoint? = DummyEcoData.recyclingPoints.firstOrNull(),
+    val selectedPoint: RecyclingPoint? = null,
     val routeDestination: RecyclingPoint? = null
 ) {
     val filteredPoints: List<RecyclingPoint>
@@ -21,7 +21,7 @@ data class MapUiState(
 
             return allPoints.filter { point ->
                 val matchesWasteType = selectedWasteType == null ||
-                    point.acceptedWasteTypes.contains(selectedWasteType)
+                    point.primaryWasteType == selectedWasteType
                 val matchesQuery = normalizedQuery.isBlank() ||
                     point.name.lowercase().contains(normalizedQuery) ||
                     point.address.lowercase().contains(normalizedQuery) ||
@@ -38,15 +38,21 @@ class MapViewModel : ViewModel() {
 
     fun onSearchQueryChange(value: String) {
         _uiState.update { state ->
-            val nextState = state.copy(searchQuery = value)
-            nextState.copy(selectedPoint = nextState.filteredPoints.firstOrNull())
+            state.copy(
+                searchQuery = value,
+                selectedPoint = null,
+                routeDestination = null
+            )
         }
     }
 
     fun onWasteTypeSelected(type: WasteType?) {
         _uiState.update { state ->
-            val nextState = state.copy(selectedWasteType = type)
-            nextState.copy(selectedPoint = nextState.filteredPoints.firstOrNull())
+            state.copy(
+                selectedWasteType = type,
+                selectedPoint = null,
+                routeDestination = null
+            )
         }
     }
 
@@ -58,3 +64,6 @@ class MapViewModel : ViewModel() {
         _uiState.update { it.copy(selectedPoint = point, routeDestination = point) }
     }
 }
+
+private val RecyclingPoint.primaryWasteType: WasteType?
+    get() = acceptedWasteTypes.firstOrNull()

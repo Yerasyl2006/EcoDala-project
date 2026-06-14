@@ -16,6 +16,7 @@ import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import com.ecodala.core.localization.EcoLocalization
 import com.ecodala.core.navigation.EcoDalaApp
+import com.ecodala.core.session.SessionManager
 import com.ecodala.core.settings.AppSettingsStore
 import com.ecodala.core.ui.theme.EcoDalaTheme
 
@@ -24,6 +25,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         AppSettingsStore.initialize(
+            context = applicationContext,
+            scope = lifecycleScope
+        )
+        SessionManager.initialize(
             context = applicationContext,
             scope = lifecycleScope
         )

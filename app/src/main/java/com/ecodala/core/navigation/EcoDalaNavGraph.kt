@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -16,9 +17,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.ecodala.core.session.SessionManager
 import com.ecodala.core.ui.components.EcoDalaBottomBar
 import com.ecodala.feature.achievements.presentation.AchievementsRoute
 import com.ecodala.feature.auth.presentation.ForgotPasswordRoute
+import com.ecodala.feature.auth.presentation.EmailVerificationRoute
 import com.ecodala.feature.auth.presentation.LoginRoute
 import com.ecodala.feature.auth.presentation.RegisterRoute
 import com.ecodala.feature.challenges.presentation.ChallengesRoute
@@ -66,9 +69,15 @@ fun EcoDalaApp(navController: NavHostController = rememberNavController()) {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(EcoDalaRoute.Splash.route) {
+                val session by SessionManager.session.collectAsState()
                 SplashScreen(
                     onFinished = {
-                        navController.navigate(EcoDalaRoute.Login.route) {
+                        val nextRoute = if (session.isLoggedIn) {
+                            EcoDalaRoute.Home.route
+                        } else {
+                            EcoDalaRoute.Login.route
+                        }
+                        navController.navigate(nextRoute) {
                             popUpTo(EcoDalaRoute.Splash.route) {
                                 inclusive = true
                             }
@@ -92,8 +101,28 @@ fun EcoDalaApp(navController: NavHostController = rememberNavController()) {
             composable(EcoDalaRoute.Register.route) {
                 RegisterRoute(
                     onBackClick = { navController.popBackStack() },
-                    onCreateAccountClick = { navController.navigate(EcoDalaRoute.Home.route) },
+                    onCreateAccountClick = {
+                        navController.navigate(EcoDalaRoute.EmailVerification.route)
+                    },
                     onLoginClick = {
+                        navController.navigate(EcoDalaRoute.Login.route) {
+                            popUpTo(EcoDalaRoute.Register.route) {
+                                inclusive = true
+                            }
+                        }
+                    }
+                )
+            }
+            composable(EcoDalaRoute.EmailVerification.route) {
+                EmailVerificationRoute(
+                    onContinueClick = {
+                        navController.navigate(EcoDalaRoute.Home.route) {
+                            popUpTo(EcoDalaRoute.Login.route) {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onBackToLoginClick = {
                         navController.navigate(EcoDalaRoute.Login.route) {
                             popUpTo(EcoDalaRoute.Register.route) {
                                 inclusive = true

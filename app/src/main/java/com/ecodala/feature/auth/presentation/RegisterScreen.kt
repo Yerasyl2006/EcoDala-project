@@ -21,11 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -33,15 +33,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -65,12 +70,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ecodala.core.domain.model.SocialAuthProvider
 import com.ecodala.core.localization.LocalEcoStrings
 import com.ecodala.core.ui.adaptive.horizontalScreenPadding
 import com.ecodala.core.ui.adaptive.isCompactHeight
 import com.ecodala.core.ui.adaptive.isExtraCompactHeight
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
+import com.ecodala.R
 
 @Composable
 fun RegisterRoute(
@@ -90,12 +97,14 @@ fun RegisterRoute(
         onConfirmPasswordChange = viewModel::onConfirmPasswordChange,
         onAcceptedTermsChange = viewModel::onAcceptedTermsChange,
         onBackClick = onBackClick,
-        onCreateAccountClick = onCreateAccountClick,
+        onCreateAccountClick = { viewModel.onRegisterSubmit(onCreateAccountClick) },
+        onSocialSignUpClick = { provider -> viewModel.onSocialLoginSubmit(provider, onCreateAccountClick) },
         onLoginClick = onLoginClick,
         modifier = modifier
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     uiState: AuthUiState,
@@ -106,6 +115,7 @@ fun RegisterScreen(
     onAcceptedTermsChange: (Boolean) -> Unit,
     onBackClick: () -> Unit,
     onCreateAccountClick: () -> Unit,
+    onSocialSignUpClick: (SocialAuthProvider) -> Unit,
     onLoginClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -118,6 +128,8 @@ fun RegisterScreen(
     val sectionGap = if (compactHeight) 14.dp else 22.dp
     val largeGap = if (compactHeight) 16.dp else 28.dp
     val buttonHeight = if (compactHeight) 52.dp else 58.dp
+    var pendingSocialProvider by remember { mutableStateOf<SocialAuthProvider?>(null) }
+    var showTermsSheet by remember { mutableStateOf(false) }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -188,6 +200,8 @@ fun RegisterScreen(
 
                 Spacer(modifier = Modifier.height(if (compactHeight) 6.dp else 10.dp))
                 PasswordStrengthIndicator(password = uiState.password)
+                Spacer(modifier = Modifier.height(10.dp))
+                PasswordRulesChecklist(password = uiState.password)
 
                 Spacer(modifier = Modifier.height(if (compactHeight) 10.dp else 18.dp))
 
@@ -203,13 +217,20 @@ fun RegisterScreen(
 
                 TermsRow(
                     checked = uiState.acceptedTerms,
-                    onCheckedChange = onAcceptedTermsChange
+                    onCheckedChange = onAcceptedTermsChange,
+                    onTermsClick = { showTermsSheet = true }
                 )
+
+                uiState.errorMessage?.let { message ->
+                    Spacer(modifier = Modifier.height(10.dp))
+                    RegisterErrorMessage(message = message)
+                }
 
                 Spacer(modifier = Modifier.height(largeGap))
 
                 Button(
                     onClick = onCreateAccountClick,
+                    enabled = !uiState.isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(buttonHeight),
@@ -220,7 +241,7 @@ fun RegisterScreen(
                     )
                 ) {
                     Text(
-                        text = strings.createAccount,
+                        text = if (uiState.isLoading) "Creating account..." else strings.createAccount,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -241,18 +262,20 @@ fun RegisterScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         },
+                        onClick = { pendingSocialProvider = SocialAuthProvider.Google },
                         modifier = Modifier.weight(1f)
                     )
                     SocialButton(
                         label = "Apple",
                         leadingContent = {
                             Icon(
-                                imageVector = Icons.Filled.Apps,
+                                painter = painterResource(id = R.drawable.ic_apple_logo),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(18.dp)
                             )
                         },
+                        onClick = { pendingSocialProvider = SocialAuthProvider.Apple },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -264,6 +287,27 @@ fun RegisterScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+        }
+
+        pendingSocialProvider?.let { provider ->
+            SocialSignUpDemoDialog(
+                provider = provider,
+                onDismiss = { pendingSocialProvider = null },
+                onContinue = {
+                    pendingSocialProvider = null
+                    onSocialSignUpClick(provider)
+                }
+            )
+        }
+
+        if (showTermsSheet) {
+            TermsPrivacyBottomSheet(
+                onDismiss = { showTermsSheet = false },
+                onAccept = {
+                    onAcceptedTermsChange(true)
+                    showTermsSheet = false
+                }
+            )
         }
     }
 }
@@ -427,9 +471,50 @@ private fun PasswordStrengthIndicator(password: String) {
 }
 
 @Composable
+private fun PasswordRulesChecklist(password: String) {
+    val rules = listOf(
+        PasswordRule("8+ characters", password.length >= 8),
+        PasswordRule("Contains a number", password.any { it.isDigit() }),
+        PasswordRule("Contains uppercase", password.any { it.isUpperCase() })
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        rules.forEach { rule ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = if (rule.isValid) EcoGreen else MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(17.dp)
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+                Text(
+                    text = rule.label,
+                    color = if (rule.isValid) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = if (rule.isValid) FontWeight.SemiBold else FontWeight.Normal
+                )
+            }
+        }
+    }
+}
+
+private data class PasswordRule(
+    val label: String,
+    val isValid: Boolean
+)
+
+@Composable
 private fun TermsRow(
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    onTermsClick: () -> Unit
 ) {
     val strings = LocalEcoStrings.current
 
@@ -460,8 +545,61 @@ private fun TermsRow(
                     append(strings.privacyPolicy)
                 }
             },
+            modifier = Modifier.clickable(onClick = onTermsClick),
             style = MaterialTheme.typography.bodySmall
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TermsPrivacyBottomSheet(
+    onDismiss: () -> Unit,
+    onAccept: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = "Terms & Privacy",
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "EcoDala stores demo profile, eco points, submissions and local preferences to provide recycling progress, rankings and challenges.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "Location is used only to show nearby recycling points and build routes when you allow it. Camera access is used for waste scanner and photo confirmation.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "You can change permissions from Android settings at any time. Backend sync can be added later with secure authentication.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Button(
+                onClick = onAccept,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
+            ) {
+                Text(text = "Accept and continue", fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 
@@ -484,9 +622,28 @@ private fun OrSignUpWith() {
 }
 
 @Composable
+private fun RegisterErrorMessage(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
 private fun SocialButton(
     label: String,
     leadingContent: @Composable () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -495,7 +652,7 @@ private fun SocialButton(
             .clip(RoundedCornerShape(10.dp))
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .clickable { },
+            .clickable(onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -508,6 +665,75 @@ private fun SocialButton(
             fontWeight = FontWeight.SemiBold
         )
     }
+}
+
+@Composable
+private fun SocialSignUpDemoDialog(
+    provider: SocialAuthProvider,
+    onDismiss: () -> Unit,
+    onContinue: () -> Unit
+) {
+    val providerName = when (provider) {
+        SocialAuthProvider.Google -> "Google"
+        SocialAuthProvider.Apple -> "Apple"
+    }
+    val providerEmail = when (provider) {
+        SocialAuthProvider.Google -> "google.user@ecodala.com"
+        SocialAuthProvider.Apple -> "apple.user@ecodala.com"
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            when (provider) {
+                SocialAuthProvider.Google -> Text(
+                    text = "G",
+                    color = Color(0xFF4285F4),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                SocialAuthProvider.Apple -> Icon(
+                    painter = painterResource(id = R.drawable.ic_apple_logo),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(34.dp)
+                )
+            }
+        },
+        title = {
+            Text(
+                text = "Sign up with $providerName",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "EcoDala will create a demo account using this $providerName profile.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = providerEmail,
+                    color = EcoGreen,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onContinue) {
+                Text(text = "Continue", color = EcoGreen, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    )
 }
 
 @Composable
@@ -550,6 +776,7 @@ private fun RegisterScreenPreview() {
             onAcceptedTermsChange = {},
             onBackClick = {},
             onCreateAccountClick = {},
+            onSocialSignUpClick = {},
             onLoginClick = {}
         )
     }
