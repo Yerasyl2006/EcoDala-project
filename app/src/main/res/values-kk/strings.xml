@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">EcoDala</string>
+    <string name="settings_title">Баптаулар</string>
+    <string name="settings_preferences">Қалаулар</string>
+    <string name="settings_push_notifications">Push хабарламалар</string>
+    <string name="settings_push_notifications_subtitle">Күнделікті челлендждер мен марапат жаңартулары</string>
+    <string name="settings_location_access">Геолокацияға рұқсат</string>
+    <string name="settings_location_access_subtitle">Жақын қайта өңдеу пункттерін көрсету</string>
+    <string name="settings_ai_tips">AI эко-кеңестер</string>
+    <string name="settings_ai_tips_subtitle">Қалдықтарды сұрыптау бойынша жеке ұсыныстар</string>
+    <string name="settings_display_units">Экран және өлшемдер</string>
+    <string name="settings_dark_mode">Қараңғы режим</string>
+    <string name="settings_dark_mode_subtitle">Қосымша тақырыбын бірден ауыстыру</string>
+    <string name="settings_language">Тіл</string>
+    <string name="settings_language_subtitle">Қосымша тілін таңдаңыз</string>
+    <string name="settings_language_en">EN</string>
+    <string name="settings_language_ru">RU</string>
+    <string name="settings_language_kk">KZ</string>
+    <string name="settings_preferred_unit">Өлшем бірлігі</string>
+    <string name="settings_preferred_unit_subtitle">Қалдық тапсыруда және тарихта қолданылады</string>
+    <string name="settings_privacy">Құпиялылық</string>
+    <string name="settings_public_profile">Рейтингтегі ашық профиль</string>
+    <string name="settings_public_profile_subtitle">Рейтингтерде атыңызды көрсету</string>
+    <string name="settings_data_security">Деректер және қауіпсіздік</string>
+    <string name="settings_data_security_subtitle">Аккаунтты қорғау және деректерді экспорттау</string>
+    <string name="settings_open">Ашу</string>
+    <string name="settings_info">Баптаулар DataStore арқылы локалды сақталады, кейін backend-пен синхрондауға болады.</string>
+</resources>

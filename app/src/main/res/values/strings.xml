@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">EcoDala</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_preferences">Preferences</string>
+    <string name="settings_push_notifications">Push Notifications</string>
+    <string name="settings_push_notifications_subtitle">Daily challenges and reward updates</string>
+    <string name="settings_location_access">Location Access</string>
+    <string name="settings_location_access_subtitle">Show nearby recycling points</string>
+    <string name="settings_ai_tips">AI Eco Tips</string>
+    <string name="settings_ai_tips_subtitle">Personalized waste sorting suggestions</string>
+    <string name="settings_display_units">Display &amp; Units</string>
+    <string name="settings_dark_mode">Dark Mode</string>
+    <string name="settings_dark_mode_subtitle">Switch app theme instantly</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_subtitle">Choose the app language</string>
+    <string name="settings_language_en">EN</string>
+    <string name="settings_language_ru">RU</string>
+    <string name="settings_language_kk">KZ</string>
+    <string name="settings_preferred_unit">Preferred Unit</string>
+    <string name="settings_preferred_unit_subtitle">Used in submissions and history</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_public_profile">Public Leaderboard Profile</string>
+    <string name="settings_public_profile_subtitle">Show your name in rankings</string>
+    <string name="settings_data_security">Data &amp; Security</string>
+    <string name="settings_data_security_subtitle">Account protection and data export</string>
+    <string name="settings_open">Open</string>
+    <string name="settings_info">Settings are stored locally with DataStore and can be synced with the backend later.</string>
+</resources>

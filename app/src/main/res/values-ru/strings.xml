@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">EcoDala</string>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_preferences">Предпочтения</string>
+    <string name="settings_push_notifications">Push-уведомления</string>
+    <string name="settings_push_notifications_subtitle">Ежедневные челленджи и обновления наград</string>
+    <string name="settings_location_access">Доступ к геолокации</string>
+    <string name="settings_location_access_subtitle">Показывать ближайшие пункты переработки</string>
+    <string name="settings_ai_tips">AI эко-советы</string>
+    <string name="settings_ai_tips_subtitle">Персональные подсказки по сортировке отходов</string>
+    <string name="settings_display_units">Экран и единицы</string>
+    <string name="settings_dark_mode">Темная тема</string>
+    <string name="settings_dark_mode_subtitle">Мгновенно переключает тему приложения</string>
+    <string name="settings_language">Язык</string>
+    <string name="settings_language_subtitle">Выберите язык приложения</string>
+    <string name="settings_language_en">EN</string>
+    <string name="settings_language_ru">RU</string>
+    <string name="settings_language_kk">KZ</string>
+    <string name="settings_preferred_unit">Единица измерения</string>
+    <string name="settings_preferred_unit_subtitle">Используется в сдаче отходов и истории</string>
+    <string name="settings_privacy">Приватность</string>
+    <string name="settings_public_profile">Публичный профиль в рейтинге</string>
+    <string name="settings_public_profile_subtitle">Показывать ваше имя в рейтингах</string>
+    <string name="settings_data_security">Данные и безопасность</string>
+    <string name="settings_data_security_subtitle">Защита аккаунта и экспорт данных</string>
+    <string name="settings_open">Открыть</string>
+    <string name="settings_info">Настройки сохраняются локально через DataStore, позже их можно синхронизировать с backend.</string>
+</resources>
