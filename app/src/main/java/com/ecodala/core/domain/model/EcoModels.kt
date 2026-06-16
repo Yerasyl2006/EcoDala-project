@@ -25,6 +25,137 @@ data class RecyclingPoint(
     val rewardPoints: Int
 )
 
+data class Biotoilet(
+    val id: String,
+    val name: String,
+    val photoLabel: String,
+    val address: String,
+    val latitude: Double,
+    val longitude: Double,
+    val distanceMeters: Int,
+    val openingHours: String,
+    val status: BiotoiletStatus,
+    val type: BiotoiletType,
+    val isAccessible: Boolean,
+    val isFamilyFriendly: Boolean,
+    val cleanlinessRating: Double,
+    val reviews: List<BiotoiletReview>
+)
+
+enum class BiotoiletStatus {
+    Open,
+    Unknown,
+    Closed,
+    Maintenance
+}
+
+enum class BiotoiletType {
+    Free,
+    Paid
+}
+
+data class BiotoiletReview(
+    val userName: String,
+    val rating: Int,
+    val comment: String,
+    val createdAt: String
+)
+
+enum class BiotoiletIssueType {
+    ClosedToilet,
+    DirtyToilet,
+    DamagedToilet,
+    NoWaterAvailable
+}
+
+data class WaterStation(
+    val id: String,
+    val name: String,
+    val photoLabel: String,
+    val address: String,
+    val latitude: Double,
+    val longitude: Double,
+    val distanceMeters: Int,
+    val workingHours: String,
+    val waterType: WaterStationType,
+    val status: WaterStationStatus,
+    val rating: Double,
+    val reviews: List<WaterStationReview>
+)
+
+enum class WaterStationType {
+    FreeDrinkingWater,
+    RefillStation,
+    FilteredWater,
+    WaterDispenser,
+    BottledWaterVendingMachine
+}
+
+enum class WaterStationStatus {
+    Available,
+    Unknown,
+    TemporarilyUnavailable,
+    Maintenance
+}
+
+data class WaterStationReview(
+    val userName: String,
+    val rating: Int,
+    val comment: String,
+    val createdAt: String
+)
+
+enum class WaterStationIssueType {
+    NotWorking,
+    PoorWaterQuality,
+    NoWater,
+    WrongHours
+}
+
+data class EcoReport(
+    val id: String,
+    val title: String,
+    val photoLabel: String,
+    val address: String,
+    val latitude: Double,
+    val longitude: Double,
+    val distanceMeters: Int,
+    val wasteDescription: String,
+    val status: EcoReportStatus,
+    val severity: EcoReportSeverity,
+    val reportedBy: String,
+    val reportedAt: String,
+    val verificationCount: Int,
+    val comments: List<EcoReportComment>
+)
+
+enum class EcoReportStatus {
+    Submitted,
+    Verified,
+    InProgress,
+    Resolved,
+    Rejected
+}
+
+enum class EcoReportSeverity {
+    Low,
+    Medium,
+    High
+}
+
+data class EcoReportComment(
+    val userName: String,
+    val comment: String,
+    val createdAt: String
+)
+
+enum class EcoReportIssueType {
+    IllegalDump,
+    ConstructionWaste,
+    HazardousWaste,
+    OverflowingBins
+}
+
 enum class WasteType(val title: String) {
     Plastic("Plastic"),
     Paper("Paper"),

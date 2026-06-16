@@ -1,10 +1,13 @@
 package com.ecodala.feature.leaderboard.presentation
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.ecodala.core.data.dummy.DummyEcoData
+import com.ecodala.core.data.repository.ApiEcoRepository
 import com.ecodala.core.domain.model.LeaderboardEntry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 data class FacultyLeaderboardEntry(
     val rank: Int,
@@ -17,7 +20,9 @@ data class FacultyLeaderboardEntry(
     val isCurrentFaculty: Boolean = false
 )
 
-class LeaderboardViewModel : ViewModel() {
+class LeaderboardViewModel(
+    private val repository: ApiEcoRepository = ApiEcoRepository()
+) : ViewModel() {
     private val currentUserPoints = DummyEcoData.pointsLedger
         .filter { it.userId == DummyEcoData.currentUser.id }
         .sumOf { it.points }
@@ -84,4 +89,11 @@ class LeaderboardViewModel : ViewModel() {
         )
     )
     val faculties: StateFlow<List<FacultyLeaderboardEntry>> = _faculties
+
+    init {
+        viewModelScope.launch {
+            repository.leaderboard()
+                .onSuccess { if (it.isNotEmpty()) _entries.value = it }
+        }
+    }
 }

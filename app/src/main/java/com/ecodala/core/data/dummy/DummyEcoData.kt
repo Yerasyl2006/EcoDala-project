@@ -1,10 +1,18 @@
 package com.ecodala.core.data.dummy
 
 import com.ecodala.core.domain.model.Achievement
+import com.ecodala.core.domain.model.Biotoilet
+import com.ecodala.core.domain.model.BiotoiletReview
+import com.ecodala.core.domain.model.BiotoiletStatus
+import com.ecodala.core.domain.model.BiotoiletType
 import com.ecodala.core.domain.model.Challenge
 import com.ecodala.core.domain.model.ChallengeStatus
 import com.ecodala.core.domain.model.ChallengeType
 import com.ecodala.core.domain.model.EcoUser
+import com.ecodala.core.domain.model.EcoReport
+import com.ecodala.core.domain.model.EcoReportComment
+import com.ecodala.core.domain.model.EcoReportSeverity
+import com.ecodala.core.domain.model.EcoReportStatus
 import com.ecodala.core.domain.model.LeaderboardEntry
 import com.ecodala.core.domain.model.PointsEvent
 import com.ecodala.core.domain.model.PointsSource
@@ -14,6 +22,10 @@ import com.ecodala.core.domain.model.TreeGrowthEvent
 import com.ecodala.core.domain.model.VirtualTree
 import com.ecodala.core.domain.model.WasteSubmission
 import com.ecodala.core.domain.model.WasteType
+import com.ecodala.core.domain.model.WaterStation
+import com.ecodala.core.domain.model.WaterStationReview
+import com.ecodala.core.domain.model.WaterStationStatus
+import com.ecodala.core.domain.model.WaterStationType
 
 object DummyEcoData {
     val currentUser = EcoUser(
@@ -97,6 +109,227 @@ object DummyEcoData {
             distanceMeters = 1200,
             acceptedWasteTypes = listOf(WasteType.Paper, WasteType.Organic, WasteType.Plastic),
             rewardPoints = 12
+        )
+    )
+
+    val biotoilets = listOf(
+        Biotoilet(
+            id = "bio-1",
+            name = "Central Park Biotoilet",
+            photoLabel = "Park entrance facility",
+            address = "Gogol St 1, Central Park, Almaty",
+            latitude = 43.260871,
+            longitude = 76.971219,
+            distanceMeters = 520,
+            openingHours = "08:00 AM - 10:00 PM",
+            status = BiotoiletStatus.Open,
+            type = BiotoiletType.Free,
+            isAccessible = true,
+            isFamilyFriendly = true,
+            cleanlinessRating = 4.6,
+            reviews = listOf(
+                BiotoiletReview("Aruzhan", 5, "Clean, easy to find and has accessible entrance.", "Today"),
+                BiotoiletReview("Daniel", 4, "Good for tourists, paper was available.", "Yesterday")
+            )
+        ),
+        Biotoilet(
+            id = "bio-2",
+            name = "Abay Square Public Toilet",
+            photoLabel = "Square service block",
+            address = "Abay Ave 56, Almaty",
+            latitude = 43.242734,
+            longitude = 76.944886,
+            distanceMeters = 780,
+            openingHours = "07:00 AM - 11:00 PM",
+            status = BiotoiletStatus.Open,
+            type = BiotoiletType.Paid,
+            isAccessible = true,
+            isFamilyFriendly = false,
+            cleanlinessRating = 4.2,
+            reviews = listOf(
+                BiotoiletReview("Miras", 4, "Paid but maintained well.", "2 days ago"),
+                BiotoiletReview("Lina", 4, "Wheelchair ramp is available.", "Last week")
+            )
+        ),
+        Biotoilet(
+            id = "bio-3",
+            name = "Botanical Garden Biotoilet",
+            photoLabel = "Garden eco cabin",
+            address = "Timiryazev St 36D, Almaty",
+            latitude = 43.224728,
+            longitude = 76.912821,
+            distanceMeters = 1260,
+            openingHours = "09:00 AM - 08:00 PM",
+            status = BiotoiletStatus.Unknown,
+            type = BiotoiletType.Paid,
+            isAccessible = false,
+            isFamilyFriendly = true,
+            cleanlinessRating = 3.8,
+            reviews = listOf(
+                BiotoiletReview("EcoVisitor", 3, "Usually open, but status changes often.", "3 days ago")
+            )
+        ),
+        Biotoilet(
+            id = "bio-4",
+            name = "Bus Station Sanitary Point",
+            photoLabel = "Transport hub toilet",
+            address = "Sayran Bus Station, Almaty",
+            latitude = 43.233103,
+            longitude = 76.874068,
+            distanceMeters = 1900,
+            openingHours = "24 hours",
+            status = BiotoiletStatus.Maintenance,
+            type = BiotoiletType.Free,
+            isAccessible = false,
+            isFamilyFriendly = false,
+            cleanlinessRating = 2.9,
+            reviews = listOf(
+                BiotoiletReview("Visitor", 2, "Reported no water this morning.", "Today")
+            )
+        )
+    )
+
+    val waterStations = listOf(
+        WaterStation(
+            id = "water-1",
+            name = "Central Park Drinking Fountain",
+            photoLabel = "Blue fountain near main alley",
+            address = "Central Park, Gogol St 1, Almaty",
+            latitude = 43.260112,
+            longitude = 76.969814,
+            distanceMeters = 480,
+            workingHours = "08:00 AM - 10:00 PM",
+            waterType = WaterStationType.FreeDrinkingWater,
+            status = WaterStationStatus.Available,
+            rating = 4.7,
+            reviews = listOf(
+                WaterStationReview("Aruzhan", 5, "Cold water, easy to refill bottle.", "Today"),
+                WaterStationReview("Tourist", 4, "Clean and visible from the path.", "Yesterday")
+            )
+        ),
+        WaterStation(
+            id = "water-2",
+            name = "KazNU Refill Station",
+            photoLabel = "Campus refill point",
+            address = "Al-Farabi Ave 71, Almaty",
+            latitude = 43.226091,
+            longitude = 76.922241,
+            distanceMeters = 920,
+            workingHours = "08:00 AM - 08:00 PM",
+            waterType = WaterStationType.RefillStation,
+            status = WaterStationStatus.Available,
+            rating = 4.8,
+            reviews = listOf(
+                WaterStationReview("Student", 5, "Best refill station on campus.", "2 days ago")
+            )
+        ),
+        WaterStation(
+            id = "water-3",
+            name = "Mega Filtered Water Point",
+            photoLabel = "Filtered water near entrance",
+            address = "Rozybakiev St 247A, Almaty",
+            latitude = 43.202980,
+            longitude = 76.892674,
+            distanceMeters = 1650,
+            workingHours = "10:00 AM - 10:00 PM",
+            waterType = WaterStationType.FilteredWater,
+            status = WaterStationStatus.Unknown,
+            rating = 4.1,
+            reviews = listOf(
+                WaterStationReview("Miras", 4, "Usually works, but sometimes closed for cleaning.", "Last week")
+            )
+        ),
+        WaterStation(
+            id = "water-4",
+            name = "Sayran Water Vending Machine",
+            photoLabel = "Water vending machine",
+            address = "Sayran Bus Station, Almaty",
+            latitude = 43.232792,
+            longitude = 76.873681,
+            distanceMeters = 1980,
+            workingHours = "24 hours",
+            waterType = WaterStationType.BottledWaterVendingMachine,
+            status = WaterStationStatus.Maintenance,
+            rating = 3.2,
+            reviews = listOf(
+                WaterStationReview("Visitor", 2, "Machine was not accepting payment.", "Today")
+            )
+        )
+    )
+
+    val ecoReports = listOf(
+        EcoReport(
+            id = "report-1",
+            title = "Illegal dump near river path",
+            photoLabel = "Plastic bags and mixed waste",
+            address = "Esentai River walking path, Almaty",
+            latitude = 43.229912,
+            longitude = 76.928381,
+            distanceMeters = 640,
+            wasteDescription = "Mixed plastic bags, food packaging and bottles left near the river path.",
+            status = EcoReportStatus.Verified,
+            severity = EcoReportSeverity.High,
+            reportedBy = "EcoWarrior",
+            reportedAt = "Today, 09:40",
+            verificationCount = 12,
+            comments = listOf(
+                EcoReportComment("Aibek", "Confirmed. Needs municipal cleanup.", "Today"),
+                EcoReportComment("Alina", "I uploaded an updated photo.", "Today")
+            )
+        ),
+        EcoReport(
+            id = "report-2",
+            title = "Overflowing bins behind campus",
+            photoLabel = "Overflowing public bins",
+            address = "Timiryazev St 42, Almaty",
+            latitude = 43.225728,
+            longitude = 76.909981,
+            distanceMeters = 980,
+            wasteDescription = "Bins are full and waste is spreading to the sidewalk.",
+            status = EcoReportStatus.Submitted,
+            severity = EcoReportSeverity.Medium,
+            reportedBy = "Student",
+            reportedAt = "Yesterday",
+            verificationCount = 3,
+            comments = listOf(
+                EcoReportComment("Miras", "Saw this yesterday evening too.", "Yesterday")
+            )
+        ),
+        EcoReport(
+            id = "report-3",
+            title = "Construction waste near bus stop",
+            photoLabel = "Construction debris",
+            address = "Abay Ave 150, Almaty",
+            latitude = 43.239421,
+            longitude = 76.888902,
+            distanceMeters = 450,
+            wasteDescription = "Wood pieces and broken tiles placed near public transport stop.",
+            status = EcoReportStatus.InProgress,
+            severity = EcoReportSeverity.High,
+            reportedBy = "Dana",
+            reportedAt = "2 days ago",
+            verificationCount = 8,
+            comments = listOf(
+                EcoReportComment("Admin", "Cleanup request has been forwarded.", "Today")
+            )
+        ),
+        EcoReport(
+            id = "report-4",
+            title = "Cleaned park corner",
+            photoLabel = "Resolved area after cleanup",
+            address = "Central Park, Almaty",
+            latitude = 43.260440,
+            longitude = 76.970623,
+            distanceMeters = 530,
+            wasteDescription = "Community report was resolved after volunteer cleanup.",
+            status = EcoReportStatus.Resolved,
+            severity = EcoReportSeverity.Low,
+            reportedBy = "Volunteer",
+            reportedAt = "Last week",
+            verificationCount = 21,
+            comments = listOf(
+                EcoReportComment("EcoDala", "Resolved and verified by community.", "3 days ago")
+            )
         )
     )
 

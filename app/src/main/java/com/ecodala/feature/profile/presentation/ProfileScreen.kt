@@ -17,12 +17,14 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
@@ -55,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,6 +93,11 @@ fun ProfileRoute(
         onSettingsClick = onSettingsClick,
         onSupportClick = onSupportClick,
         onLogoutClick = { viewModel.logout(onLogoutClick) },
+        onEditProfileClick = viewModel::startProfileEdit,
+        onCancelProfileEdit = viewModel::cancelProfileEdit,
+        onSaveProfileClick = viewModel::saveProfile,
+        onFullNameChange = viewModel::onEditFullNameChange,
+        onEmailChange = viewModel::onEditEmailChange,
         modifier = modifier
     )
 }
@@ -105,6 +113,11 @@ fun ProfileScreen(
     onSettingsClick: () -> Unit,
     onSupportClick: () -> Unit,
     onLogoutClick: () -> Unit,
+    onEditProfileClick: () -> Unit = {},
+    onCancelProfileEdit: () -> Unit = {},
+    onSaveProfileClick: () -> Unit = {},
+    onFullNameChange: (String) -> Unit = {},
+    onEmailChange: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -131,6 +144,31 @@ fun ProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 ProfileHeader(user = user)
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (uiState.profileSaved) {
+                    Text(
+                        text = "Profile updated",
+                        color = EcoGreen,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                if (uiState.isEditingProfile) {
+                    EditProfileCard(
+                        fullName = uiState.editFullName,
+                        email = uiState.editEmail,
+                        onFullNameChange = onFullNameChange,
+                        onEmailChange = onEmailChange,
+                        onSaveClick = onSaveProfileClick,
+                        onCancelClick = onCancelProfileEdit
+                    )
+                } else {
+                    EditProfileButton(onClick = onEditProfileClick)
+                }
 
                 Spacer(modifier = Modifier.height(18.dp))
 
@@ -174,6 +212,125 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EditProfileButton(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(EcoGreen.copy(alpha = 0.12f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Edit,
+            contentDescription = null,
+            tint = EcoGreen,
+            modifier = Modifier.size(17.dp)
+        )
+        Spacer(modifier = Modifier.size(7.dp))
+        Text(
+            text = "Edit profile",
+            color = EcoGreen,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun EditProfileCard(
+    fullName: String,
+    email: String,
+    onFullNameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onSaveClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Edit account info",
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            ProfileInput(
+                label = "Full name",
+                value = fullName,
+                onValueChange = onFullNameChange
+            )
+            ProfileInput(
+                label = "Email",
+                value = email,
+                onValueChange = onEmailChange
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(
+                    onClick = onSaveClick,
+                    modifier = Modifier.weight(1f).height(46.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
+                ) {
+                    Text("Save", fontWeight = FontWeight.Bold)
+                }
+                Button(
+                    onClick = onCancelClick,
+                    modifier = Modifier.weight(1f).height(46.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                ) {
+                    Text("Cancel", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileInput(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    Column {
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            textStyle = TextStyle(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+        )
     }
 }
 

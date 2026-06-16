@@ -3,6 +3,7 @@ package com.ecodala.feature.home.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ecodala.core.data.dummy.DummyEcoData
+import com.ecodala.core.data.repository.ApiEcoRepository
 import com.ecodala.core.data.repository.DemoPointsEconomyRepository
 import com.ecodala.core.domain.usecase.GetAchievementProgressUseCase
 import com.ecodala.core.domain.usecase.GetMonthlyImpactUseCase
@@ -41,7 +42,9 @@ data class HomeAchievementUi(
     val iconName: String
 )
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(
+    private val backendRepository: ApiEcoRepository = ApiEcoRepository()
+) : ViewModel() {
     private val pointsRepository = DemoPointsEconomyRepository()
     private val getPointsWalletUseCase = GetPointsWalletUseCase(pointsRepository)
     private val getMonthlyImpactUseCase = GetMonthlyImpactUseCase(pointsRepository)
@@ -56,6 +59,17 @@ class HomeViewModel : ViewModel() {
 
     fun loadPointsEconomy() {
         viewModelScope.launch {
+            backendRepository.currentUser()
+                .onSuccess { user ->
+                    _uiState.update { state ->
+                        state.copy(
+                            userName = user.fullName,
+                            ecoPoints = user.ecoPoints,
+                            level = user.level,
+                            globalRank = user.globalRank
+                        )
+                    }
+                }
             val userId = DummyEcoData.currentUser.id
             val wallet = getPointsWalletUseCase(userId).getOrNull()
             val impact = getMonthlyImpactUseCase(userId).getOrNull()

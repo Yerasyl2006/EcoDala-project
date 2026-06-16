@@ -18,6 +18,7 @@ import java.io.IOException
 data class UserSession(
     val isLoggedIn: Boolean = false,
     val token: String? = null,
+    val refreshToken: String? = null,
     val userId: String? = null,
     val fullName: String? = null,
     val email: String? = null
@@ -33,6 +34,7 @@ object SessionManager {
 
     private val isLoggedInKey = booleanPreferencesKey("is_logged_in")
     private val tokenKey = stringPreferencesKey("token")
+    private val refreshTokenKey = stringPreferencesKey("refresh_token")
     private val userIdKey = stringPreferencesKey("user_id")
     private val fullNameKey = stringPreferencesKey("full_name")
     private val emailKey = stringPreferencesKey("email")
@@ -54,6 +56,7 @@ object SessionManager {
                     UserSession(
                         isLoggedIn = preferences[isLoggedInKey] ?: false,
                         token = preferences[tokenKey],
+                        refreshToken = preferences[refreshTokenKey],
                         userId = preferences[userIdKey],
                         fullName = preferences[fullNameKey],
                         email = preferences[emailKey]
@@ -64,10 +67,15 @@ object SessionManager {
     }
 
     suspend fun saveSession(token: String, user: EcoUser) {
+        saveSession(token = token, refreshToken = _session.value.refreshToken, user = user)
+    }
+
+    suspend fun saveSession(token: String, refreshToken: String?, user: EcoUser) {
         val context = appContext ?: return
         context.sessionDataStore.edit { preferences ->
             preferences[isLoggedInKey] = true
             preferences[tokenKey] = token
+            refreshToken?.let { preferences[refreshTokenKey] = it }
             preferences[userIdKey] = user.id
             preferences[fullNameKey] = user.fullName
             preferences[emailKey] = user.email
@@ -75,9 +83,43 @@ object SessionManager {
         _session.value = UserSession(
             isLoggedIn = true,
             token = token,
+            refreshToken = refreshToken,
             userId = user.id,
             fullName = user.fullName,
             email = user.email
+        )
+    }
+
+    suspend fun saveRawSession(accessToken: String, refreshToken: String?) {
+        val context = appContext ?: return
+        val current = _session.value
+        context.sessionDataStore.edit { preferences ->
+            preferences[isLoggedInKey] = true
+            preferences[tokenKey] = accessToken
+            refreshToken?.let { preferences[refreshTokenKey] = it }
+        }
+        _session.value = current.copy(
+            isLoggedIn = true,
+            token = accessToken,
+            refreshToken = refreshToken
+        )
+    }
+
+    suspend fun updateProfile(fullName: String, email: String) {
+        val context = appContext ?: return
+        val current = _session.value
+        context.sessionDataStore.edit { preferences ->
+            preferences[isLoggedInKey] = current.isLoggedIn
+            current.token?.let { preferences[tokenKey] = it }
+            current.refreshToken?.let { preferences[refreshTokenKey] = it }
+            preferences[userIdKey] = current.userId ?: "user-1"
+            preferences[fullNameKey] = fullName
+            preferences[emailKey] = email
+        }
+        _session.value = current.copy(
+            userId = current.userId ?: "user-1",
+            fullName = fullName,
+            email = email
         )
     }
 

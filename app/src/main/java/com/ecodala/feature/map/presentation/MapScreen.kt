@@ -42,22 +42,27 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.ElectricScooter
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PedalBike
 import androidx.compose.material.icons.filled.Recycling
+import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.LocalTaxi
 import androidx.compose.material.icons.filled.TwoWheeler
+import androidx.compose.material.icons.filled.Wc
 import androidx.compose.material.icons.filled.WineBar
+import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -96,8 +101,44 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ecodala.core.domain.model.RecyclingPoint
+import com.ecodala.core.domain.model.Biotoilet
+import com.ecodala.core.domain.model.BiotoiletStatus
+import com.ecodala.core.domain.model.BiotoiletType
+import com.ecodala.core.domain.model.EcoReport
+import com.ecodala.core.domain.model.EcoReportSeverity
+import com.ecodala.core.domain.model.EcoReportStatus
 import com.ecodala.core.domain.model.WasteType
+import com.ecodala.core.domain.model.WaterStation
+import com.ecodala.core.domain.model.WaterStationStatus
+import com.ecodala.core.domain.model.WaterStationType
 import com.ecodala.core.localization.LocalEcoStrings
+import com.ecodala.core.localization.access
+import com.ecodala.core.localization.accessible
+import com.ecodala.core.localization.biotoiletStatusName
+import com.ecodala.core.localization.biotoiletTypeName
+import com.ecodala.core.localization.biotoilets
+import com.ecodala.core.localization.distance
+import com.ecodala.core.localization.ecoReportSeverityName
+import com.ecodala.core.localization.ecoReportStatusName
+import com.ecodala.core.localization.ecoReports
+import com.ecodala.core.localization.family
+import com.ecodala.core.localization.free
+import com.ecodala.core.localization.freeOnly
+import com.ecodala.core.localization.highSeverity
+import com.ecodala.core.localization.highlyRated
+import com.ecodala.core.localization.hours
+import com.ecodala.core.localization.limited
+import com.ecodala.core.localization.nearest
+import com.ecodala.core.localization.openDetails
+import com.ecodala.core.localization.openNow
+import com.ecodala.core.localization.openReport
+import com.ecodala.core.localization.paid
+import com.ecodala.core.localization.refill
+import com.ecodala.core.localization.standard
+import com.ecodala.core.localization.type
+import com.ecodala.core.localization.waterStationStatusName
+import com.ecodala.core.localization.waterStationTypeName
+import com.ecodala.core.localization.waterStations
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
 import com.google.android.gms.location.LocationCallback
@@ -122,10 +163,14 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
+import org.osmdroid.views.overlay.Polygon
 
 @Composable
 fun MapRoute(
     onPointDetailsClick: (String) -> Unit,
+    onBiotoiletDetailsClick: (String) -> Unit,
+    onWaterStationDetailsClick: (String) -> Unit,
+    onEcoReportDetailsClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MapViewModel = viewModel()
 ) {
@@ -134,10 +179,20 @@ fun MapRoute(
     MapScreen(
         uiState = uiState,
         onSearchQueryChange = viewModel::onSearchQueryChange,
+        onMapLayerSelected = viewModel::onMapLayerSelected,
         onWasteTypeSelected = viewModel::onWasteTypeSelected,
+        onBiotoiletFilterToggle = viewModel::toggleBiotoiletFilter,
+        onWaterStationFilterToggle = viewModel::toggleWaterStationFilter,
+        onEcoReportFilterToggle = viewModel::toggleEcoReportFilter,
         onPointSelected = viewModel::onPointSelected,
+        onBiotoiletSelected = viewModel::onBiotoiletSelected,
+        onWaterStationSelected = viewModel::onWaterStationSelected,
+        onEcoReportSelected = viewModel::onEcoReportSelected,
         onRouteClick = viewModel::onRouteRequested,
         onPointClick = { onPointDetailsClick(it.id) },
+        onBiotoiletClick = { onBiotoiletDetailsClick(it.id) },
+        onWaterStationClick = { onWaterStationDetailsClick(it.id) },
+        onEcoReportClick = { onEcoReportDetailsClick(it.id) },
         modifier = modifier
     )
 }
@@ -146,10 +201,20 @@ fun MapRoute(
 fun MapScreen(
     uiState: MapUiState,
     onSearchQueryChange: (String) -> Unit,
+    onMapLayerSelected: (MapLayer) -> Unit,
     onWasteTypeSelected: (WasteType?) -> Unit,
+    onBiotoiletFilterToggle: (BiotoiletFilterOption) -> Unit,
+    onWaterStationFilterToggle: (WaterStationFilterOption) -> Unit,
+    onEcoReportFilterToggle: (EcoReportFilterOption) -> Unit,
     onPointSelected: (RecyclingPoint) -> Unit,
+    onBiotoiletSelected: (Biotoilet) -> Unit,
+    onWaterStationSelected: (WaterStation) -> Unit,
+    onEcoReportSelected: (EcoReport) -> Unit,
     onRouteClick: (RecyclingPoint) -> Unit,
     onPointClick: (RecyclingPoint) -> Unit,
+    onBiotoiletClick: (Biotoilet) -> Unit,
+    onWaterStationClick: (WaterStation) -> Unit,
+    onEcoReportClick: (EcoReport) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -161,11 +226,21 @@ fun MapScreen(
         mutableStateOf(context.isDeviceLocationEnabled())
     }
     var userLocation by remember { mutableStateOf<GeoPoint?>(null) }
+    var userLocationAccuracyMeters by remember { mutableStateOf<Float?>(null) }
+    var locationLoading by remember { mutableStateOf(false) }
     var locationServiceDisabled by remember {
         mutableStateOf(hasLocationPermission && !deviceLocationEnabled)
     }
     val initialPoint = uiState.selectedPoint ?: uiState.filteredPoints.firstOrNull()
-    val initialGeoPoint = initialPoint?.toGeoPoint() ?: GeoPoint(43.238949, 76.889709)
+    val initialBiotoilet = uiState.selectedBiotoilet ?: uiState.filteredBiotoilets.firstOrNull()
+    val initialWaterStation = uiState.selectedWaterStation ?: uiState.filteredWaterStations.firstOrNull()
+    val initialEcoReport = uiState.selectedEcoReport ?: uiState.filteredEcoReports.firstOrNull()
+    val initialGeoPoint = when (uiState.mapLayer) {
+        MapLayer.Biotoilets -> initialBiotoilet?.toGeoPoint() ?: GeoPoint(43.238949, 76.889709)
+        MapLayer.WaterStations -> initialWaterStation?.toGeoPoint() ?: GeoPoint(43.238949, 76.889709)
+        MapLayer.EcoReports -> initialEcoReport?.toGeoPoint() ?: GeoPoint(43.238949, 76.889709)
+        MapLayer.Recycling -> initialPoint?.toGeoPoint() ?: GeoPoint(43.238949, 76.889709)
+    }
     var mapView by remember { mutableStateOf<MapView?>(null) }
     val coroutineScope = rememberCoroutineScope()
     var isPreviewExpanded by remember { mutableStateOf(false) }
@@ -190,22 +265,40 @@ fun MapScreen(
         location ?: return
         val target = GeoPoint(location.latitude, location.longitude)
         userLocation = target
+        userLocationAccuracyMeters = if (location.hasAccuracy()) location.accuracy else null
+        locationLoading = false
         coroutineScope.launch {
-            mapView?.controller?.setZoom(16.0)
+            val targetZoom = when {
+                location.hasAccuracy() && location.accuracy <= 30f -> 17.5
+                location.hasAccuracy() && location.accuracy <= 100f -> 16.5
+                else -> 15.5
+            }
+            mapView?.controller?.setZoom(targetZoom)
             mapView?.controller?.animateTo(target)
         }
     }
 
     @SuppressLint("MissingPermission")
-    fun requestSingleLocationUpdate() {
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1_000L)
-            .setMaxUpdates(1)
+    fun startPreciseLocationUpdates() {
+        locationLoading = true
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1_500L)
+            .setMinUpdateIntervalMillis(700L)
+            .setMaxUpdateDelayMillis(2_000L)
+            .setMaxUpdates(5)
             .build()
         lateinit var callback: LocationCallback
         callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                fusedLocationClient.removeLocationUpdates(callback)
-                updateUserLocation(result.lastLocation)
+                val bestLocation = result.locations
+                    .filter { it.latitude != 0.0 && it.longitude != 0.0 }
+                    .minByOrNull { if (it.hasAccuracy()) it.accuracy else Float.MAX_VALUE }
+                    ?: result.lastLocation
+
+                updateUserLocation(bestLocation)
+
+                if (bestLocation?.hasAccuracy() == true && bestLocation.accuracy <= 25f) {
+                    fusedLocationClient.removeLocationUpdates(callback)
+                }
             }
         }
 
@@ -217,10 +310,12 @@ fun MapScreen(
         if (!context.hasLocationPermission()) return
         if (!context.isDeviceLocationEnabled()) {
             locationServiceDisabled = true
+            locationLoading = false
             return
         }
 
         locationServiceDisabled = false
+        locationLoading = true
 
         val cancellationTokenSource = CancellationTokenSource()
         fusedLocationClient
@@ -228,8 +323,11 @@ fun MapScreen(
             .addOnSuccessListener { location ->
                 if (location != null) {
                     updateUserLocation(location)
+                    if (!location.hasAccuracy() || location.accuracy > 25f) {
+                        startPreciseLocationUpdates()
+                    }
                 } else {
-                    requestSingleLocationUpdate()
+                    startPreciseLocationUpdates()
                 }
             }
             .addOnFailureListener {
@@ -237,8 +335,9 @@ fun MapScreen(
                     .addOnSuccessListener { location ->
                         if (location != null) {
                             updateUserLocation(location)
+                            startPreciseLocationUpdates()
                         } else {
-                            requestSingleLocationUpdate()
+                            startPreciseLocationUpdates()
                         }
                     }
             }
@@ -336,13 +435,23 @@ fun MapScreen(
         OpenStreetMapView(
             modifier = Modifier.fillMaxSize(),
             initialCenter = initialGeoPoint,
-            points = uiState.filteredPoints,
-            selectedPoint = uiState.selectedPoint,
+            points = if (uiState.mapLayer == MapLayer.Recycling) uiState.filteredPoints else emptyList(),
+            biotoilets = if (uiState.mapLayer == MapLayer.Biotoilets) uiState.filteredBiotoilets else emptyList(),
+            waterStations = if (uiState.mapLayer == MapLayer.WaterStations) uiState.filteredWaterStations else emptyList(),
+            ecoReports = if (uiState.mapLayer == MapLayer.EcoReports) uiState.filteredEcoReports else emptyList(),
+            selectedPoint = if (uiState.mapLayer == MapLayer.Recycling) uiState.selectedPoint else null,
+            selectedBiotoilet = uiState.selectedBiotoilet,
+            selectedWaterStation = uiState.selectedWaterStation,
+            selectedEcoReport = uiState.selectedEcoReport,
             routeDestination = uiState.routeDestination,
             userLocation = userLocation,
+            userLocationAccuracyMeters = userLocationAccuracyMeters,
             streetRoutePoints = streetRoute?.points.orEmpty(),
             onMapReady = { mapView = it },
-            onPointSelected = onPointSelected
+            onPointSelected = onPointSelected,
+            onBiotoiletSelected = onBiotoiletSelected,
+            onWaterStationSelected = onWaterStationSelected,
+            onEcoReportSelected = onEcoReportSelected
         )
 
         Column(
@@ -360,8 +469,16 @@ fun MapScreen(
             Spacer(modifier = Modifier.height(14.dp))
 
             WasteFilterRow(
+                selectedLayer = uiState.mapLayer,
+                onMapLayerSelected = onMapLayerSelected,
                 selectedWasteType = uiState.selectedWasteType,
-                onWasteTypeSelected = onWasteTypeSelected
+                onWasteTypeSelected = onWasteTypeSelected,
+                biotoiletFilter = uiState.biotoiletFilter,
+                onBiotoiletFilterToggle = onBiotoiletFilterToggle,
+                waterStationFilter = uiState.waterStationFilter,
+                onWaterStationFilterToggle = onWaterStationFilterToggle,
+                ecoReportFilter = uiState.ecoReportFilter,
+                onEcoReportFilterToggle = onEcoReportFilterToggle
             )
 
             if (locationServiceDisabled) {
@@ -374,7 +491,12 @@ fun MapScreen(
             }
         }
 
-        if (uiState.filteredPoints.isEmpty()) {
+        if (
+            (uiState.mapLayer == MapLayer.Recycling && uiState.filteredPoints.isEmpty()) ||
+            (uiState.mapLayer == MapLayer.Biotoilets && uiState.filteredBiotoilets.isEmpty()) ||
+            (uiState.mapLayer == MapLayer.WaterStations && uiState.filteredWaterStations.isEmpty()) ||
+            (uiState.mapLayer == MapLayer.EcoReports && uiState.filteredEcoReports.isEmpty())
+        ) {
             EmptyMapResult(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -439,6 +561,8 @@ fun MapScreen(
 
         MapFloatingControls(
             onMyLocationClick = ::requestOrMoveToUserLocation,
+            isLocationLoading = locationLoading,
+            accuracyMeters = userLocationAccuracyMeters,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(
@@ -451,7 +575,38 @@ fun MapScreen(
                 )
         )
 
-        uiState.selectedPoint?.let { point ->
+        if (uiState.mapLayer == MapLayer.EcoReports) {
+            uiState.selectedEcoReport?.let { report ->
+                EcoReportPreviewCard(
+                    report = report,
+                    onClick = { onEcoReportClick(report) },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 0.dp)
+                )
+            }
+        } else if (uiState.mapLayer == MapLayer.WaterStations) {
+            uiState.selectedWaterStation?.let { station ->
+                WaterStationPreviewCard(
+                    station = station,
+                    onClick = { onWaterStationClick(station) },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 0.dp)
+                )
+            }
+        } else if (uiState.mapLayer == MapLayer.Biotoilets) {
+            uiState.selectedBiotoilet?.let { toilet ->
+                BiotoiletPreviewCard(
+                    toilet = toilet,
+                    onClick = { onBiotoiletClick(toilet) },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 0.dp)
+                )
+            }
+        } else {
+            uiState.selectedPoint?.let { point ->
             RecyclingPointPreviewCard(
                 point = point,
                 onClick = { onPointClick(point) },
@@ -476,6 +631,7 @@ fun MapScreen(
                     .align(Alignment.BottomCenter)
                     .padding(horizontal = 0.dp)
             )
+            }
         }
     }
 }
@@ -484,12 +640,22 @@ fun MapScreen(
 private fun OpenStreetMapView(
     initialCenter: GeoPoint,
     points: List<RecyclingPoint>,
+    biotoilets: List<Biotoilet>,
+    waterStations: List<WaterStation>,
+    ecoReports: List<EcoReport>,
     selectedPoint: RecyclingPoint?,
+    selectedBiotoilet: Biotoilet?,
+    selectedWaterStation: WaterStation?,
+    selectedEcoReport: EcoReport?,
     routeDestination: RecyclingPoint?,
     userLocation: GeoPoint?,
+    userLocationAccuracyMeters: Float?,
     streetRoutePoints: List<GeoPoint>,
     onMapReady: (MapView) -> Unit,
     onPointSelected: (RecyclingPoint) -> Unit,
+    onBiotoiletSelected: (Biotoilet) -> Unit,
+    onWaterStationSelected: (WaterStation) -> Unit,
+    onEcoReportSelected: (EcoReport) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -528,10 +694,20 @@ private fun OpenStreetMapView(
             }
 
             userLocation?.let { location ->
+                userLocationAccuracyMeters?.let { accuracy ->
+                    map.overlays.add(
+                        Polygon(map).apply {
+                            setPoints(Polygon.pointsAsCircle(location, accuracy.toDouble()))
+                            fillColor = android.graphics.Color.argb(38, 18, 129, 54)
+                            outlinePaint.color = android.graphics.Color.argb(90, 18, 129, 54)
+                            outlinePaint.strokeWidth = 2.5f
+                        }
+                    )
+                }
                 map.overlays.add(
                     Marker(map).apply {
                         position = location
-                        title = "You are here"
+                        title = userLocationAccuracyMeters?.let { "You are here (+/- ${it.roundToInt()} m)" } ?: "You are here"
                         icon = createUserLocationMarkerIcon(context)
                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                     }
@@ -560,6 +736,60 @@ private fun OpenStreetMapView(
                 )
             }
 
+            biotoilets.forEach { toilet ->
+                val isSelected = selectedBiotoilet?.id == toilet.id
+                map.overlays.add(
+                    Marker(map).apply {
+                        position = toilet.toGeoPoint()
+                        title = toilet.name
+                        snippet = toilet.address
+                        icon = createBiotoiletMarkerIcon(context, toilet.status, isSelected)
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        alpha = if (isSelected) 1f else 0.9f
+                        setOnMarkerClickListener { _, _ ->
+                            onBiotoiletSelected(toilet)
+                            true
+                        }
+                    }
+                )
+            }
+
+            waterStations.forEach { station ->
+                val isSelected = selectedWaterStation?.id == station.id
+                map.overlays.add(
+                    Marker(map).apply {
+                        position = station.toGeoPoint()
+                        title = station.name
+                        snippet = station.address
+                        icon = createWaterStationMarkerIcon(context, station.status, isSelected)
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        alpha = if (isSelected) 1f else 0.9f
+                        setOnMarkerClickListener { _, _ ->
+                            onWaterStationSelected(station)
+                            true
+                        }
+                    }
+                )
+            }
+
+            ecoReports.forEach { report ->
+                val isSelected = selectedEcoReport?.id == report.id
+                map.overlays.add(
+                    Marker(map).apply {
+                        position = report.toGeoPoint()
+                        title = report.title
+                        snippet = report.address
+                        icon = createEcoReportMarkerIcon(context, report.status, report.severity, isSelected)
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        alpha = if (isSelected) 1f else 0.9f
+                        setOnMarkerClickListener { _, _ ->
+                            onEcoReportSelected(report)
+                            true
+                        }
+                    }
+                )
+            }
+
             map.invalidate()
         }
     )
@@ -568,6 +798,8 @@ private fun OpenStreetMapView(
 @Composable
 private fun MapFloatingControls(
     onMyLocationClick: () -> Unit,
+    isLocationLoading: Boolean,
+    accuracyMeters: Float?,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -577,19 +809,30 @@ private fun MapFloatingControls(
     ) {
         Surface(
             modifier = Modifier
-                .size(50.dp)
+                .size(if (accuracyMeters != null) 72.dp else 50.dp)
                 .clickable(onClick = onMyLocationClick),
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surface,
             shadowElevation = 8.dp
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
                 Icon(
                     imageVector = Icons.Filled.MyLocation,
                     contentDescription = "My location",
-                    tint = EcoGreen,
+                    tint = if (isLocationLoading) MaterialTheme.colorScheme.onSurfaceVariant else EcoGreen,
                     modifier = Modifier.size(24.dp)
                 )
+                accuracyMeters?.let {
+                    Text(
+                        text = "±${it.roundToInt()}m",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
@@ -607,6 +850,7 @@ private fun LocationEnablePromptCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
     ) {
+        val strings = LocalEcoStrings.current
         Column(
             modifier = Modifier.padding(18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -995,8 +1239,16 @@ private fun EmptyMapResult(modifier: Modifier = Modifier) {
 
 @Composable
 private fun WasteFilterRow(
+    selectedLayer: MapLayer,
+    onMapLayerSelected: (MapLayer) -> Unit,
     selectedWasteType: WasteType?,
-    onWasteTypeSelected: (WasteType?) -> Unit
+    onWasteTypeSelected: (WasteType?) -> Unit,
+    biotoiletFilter: BiotoiletFilter,
+    onBiotoiletFilterToggle: (BiotoiletFilterOption) -> Unit,
+    waterStationFilter: WaterStationFilter,
+    onWaterStationFilterToggle: (WaterStationFilterOption) -> Unit,
+    ecoReportFilter: EcoReportFilter,
+    onEcoReportFilterToggle: (EcoReportFilterOption) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -1006,15 +1258,160 @@ private fun WasteFilterRow(
     ) {
         val strings = LocalEcoStrings.current
         FilterChip(
+            label = strings.biotoilets,
+            icon = Icons.Filled.Wc,
+            selected = selectedLayer == MapLayer.Biotoilets,
+            colors = FilterChipColors(
+                selectedContainer = Color(0xFF00796B),
+                unselectedContainer = Color(0xFFE0F7F4),
+                selectedContent = Color.White,
+                unselectedContent = Color(0xFF00796B)
+            ),
+            onClick = { onMapLayerSelected(MapLayer.Biotoilets) }
+        )
+        FilterChip(
+            label = strings.waterStations,
+            icon = Icons.Filled.WaterDrop,
+            selected = selectedLayer == MapLayer.WaterStations,
+            colors = FilterChipColors(
+                selectedContainer = Color(0xFF1976D2),
+                unselectedContainer = Color(0xFFE3F2FD),
+                selectedContent = Color.White,
+                unselectedContent = Color(0xFF1976D2)
+            ),
+            onClick = { onMapLayerSelected(MapLayer.WaterStations) }
+        )
+        FilterChip(
+            label = strings.ecoReports,
+            icon = Icons.Filled.Delete,
+            selected = selectedLayer == MapLayer.EcoReports,
+            colors = FilterChipColors(
+                selectedContainer = Color(0xFFD84315),
+                unselectedContainer = Color(0xFFFFECE4),
+                selectedContent = Color.White,
+                unselectedContent = Color(0xFFD84315)
+            ),
+            onClick = { onMapLayerSelected(MapLayer.EcoReports) }
+        )
+        if (selectedLayer == MapLayer.EcoReports) {
+            FilterChip(
+                label = strings.active,
+                icon = Icons.Filled.Delete,
+                selected = ecoReportFilter.activeOnly,
+                colors = ecoReportFilterColors(),
+                onClick = { onEcoReportFilterToggle(EcoReportFilterOption.Active) }
+            )
+            FilterChip(
+                label = strings.highSeverity,
+                icon = Icons.Filled.Report,
+                selected = ecoReportFilter.highSeverityOnly,
+                colors = ecoReportFilterColors(),
+                onClick = { onEcoReportFilterToggle(EcoReportFilterOption.HighSeverity) }
+            )
+            FilterChip(
+                label = strings.ecoReportStatusName(EcoReportStatus.Verified),
+                icon = Icons.Filled.CheckCircle,
+                selected = ecoReportFilter.verifiedOnly,
+                colors = ecoReportFilterColors(),
+                onClick = { onEcoReportFilterToggle(EcoReportFilterOption.Verified) }
+            )
+            FilterChip(
+                label = strings.ecoReportStatusName(EcoReportStatus.Resolved),
+                icon = Icons.Filled.CheckCircle,
+                selected = ecoReportFilter.resolvedOnly,
+                colors = ecoReportFilterColors(),
+                onClick = { onEcoReportFilterToggle(EcoReportFilterOption.Resolved) }
+            )
+            FilterChip(
+                label = strings.nearest,
+                icon = Icons.Filled.LocationOn,
+                selected = ecoReportFilter.nearestOnly,
+                colors = ecoReportFilterColors(),
+                onClick = { onEcoReportFilterToggle(EcoReportFilterOption.Nearest) }
+            )
+            return@Row
+        }
+        if (selectedLayer == MapLayer.WaterStations) {
+            FilterChip(
+                label = strings.freeOnly,
+                icon = Icons.Filled.WaterDrop,
+                selected = waterStationFilter.freeOnly,
+                colors = waterFilterColors(),
+                onClick = { onWaterStationFilterToggle(WaterStationFilterOption.Free) }
+            )
+            FilterChip(
+                label = strings.openNow,
+                icon = Icons.Filled.CheckCircle,
+                selected = waterStationFilter.openNowOnly,
+                colors = waterFilterColors(),
+                onClick = { onWaterStationFilterToggle(WaterStationFilterOption.OpenNow) }
+            )
+            FilterChip(
+                label = strings.highlyRated,
+                icon = Icons.Filled.Star,
+                selected = waterStationFilter.highlyRatedOnly,
+                colors = waterFilterColors(),
+                onClick = { onWaterStationFilterToggle(WaterStationFilterOption.HighlyRated) }
+            )
+            FilterChip(
+                label = strings.nearest,
+                icon = Icons.Filled.LocationOn,
+                selected = waterStationFilter.nearestOnly,
+                colors = waterFilterColors(),
+                onClick = { onWaterStationFilterToggle(WaterStationFilterOption.Nearest) }
+            )
+            FilterChip(
+                label = strings.refill,
+                icon = Icons.Filled.WaterDrop,
+                selected = waterStationFilter.refillOnly,
+                colors = waterFilterColors(),
+                onClick = { onWaterStationFilterToggle(WaterStationFilterOption.Refill) }
+            )
+            return@Row
+        }
+        if (selectedLayer == MapLayer.Biotoilets) {
+            FilterChip(
+                label = strings.free,
+                icon = Icons.Filled.Wc,
+                selected = biotoiletFilter.freeOnly,
+                colors = simpleFilterColors(),
+                onClick = { onBiotoiletFilterToggle(BiotoiletFilterOption.Free) }
+            )
+            FilterChip(
+                label = strings.paid,
+                icon = Icons.Filled.Wc,
+                selected = biotoiletFilter.paidOnly,
+                colors = simpleFilterColors(),
+                onClick = { onBiotoiletFilterToggle(BiotoiletFilterOption.Paid) }
+            )
+            FilterChip(
+                label = strings.accessible,
+                icon = Icons.Filled.CheckCircle,
+                selected = biotoiletFilter.accessibleOnly,
+                colors = simpleFilterColors(),
+                onClick = { onBiotoiletFilterToggle(BiotoiletFilterOption.Accessible) }
+            )
+            FilterChip(
+                label = strings.highlyRated,
+                icon = Icons.Filled.Star,
+                selected = biotoiletFilter.highlyRatedOnly,
+                colors = simpleFilterColors(),
+                onClick = { onBiotoiletFilterToggle(BiotoiletFilterOption.HighlyRated) }
+            )
+            FilterChip(
+                label = strings.openNow,
+                icon = Icons.Filled.CheckCircle,
+                selected = biotoiletFilter.openNowOnly,
+                colors = simpleFilterColors(),
+                onClick = { onBiotoiletFilterToggle(BiotoiletFilterOption.OpenNow) }
+            )
+            return@Row
+        }
+        FilterChip(
             label = strings.all,
             icon = Icons.Filled.Recycling,
             selected = selectedWasteType == null,
-            colors = FilterChipColors(
-                selectedContainer = EcoGreen,
-                unselectedContainer = Color.White,
-                selectedContent = Color.White,
-                unselectedContent = EcoGreen
-            ),
+            colors = simpleFilterColors(),
             onClick = { onWasteTypeSelected(null) }
         )
         FilterChip(
@@ -1046,6 +1443,33 @@ private fun WasteFilterRow(
             onClick = { onWasteTypeSelected(WasteType.Batteries) }
         )
     }
+}
+
+private fun ecoReportFilterColors(): FilterChipColors {
+    return FilterChipColors(
+        selectedContainer = Color(0xFFD84315),
+        unselectedContainer = Color.White,
+        selectedContent = Color.White,
+        unselectedContent = Color(0xFFD84315)
+    )
+}
+
+private fun waterFilterColors(): FilterChipColors {
+    return FilterChipColors(
+        selectedContainer = Color(0xFF1976D2),
+        unselectedContainer = Color.White,
+        selectedContent = Color.White,
+        unselectedContent = Color(0xFF1976D2)
+    )
+}
+
+private fun simpleFilterColors(): FilterChipColors {
+    return FilterChipColors(
+        selectedContainer = EcoGreen,
+        unselectedContainer = Color.White,
+        selectedContent = Color.White,
+        unselectedContent = EcoGreen
+    )
 }
 
 @Composable
@@ -1366,6 +1790,259 @@ private fun MapCardActionButton(
 }
 
 @Composable
+private fun BiotoiletPreviewCard(
+    toilet: Biotoilet,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalEcoStrings.current
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .size(width = 46.dp, height = 4.dp)
+                    .background(Color(0xFFD9DED8), RoundedCornerShape(4.dp))
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .background(toilet.status.statusColor().copy(alpha = 0.14f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Wc,
+                        contentDescription = null,
+                        tint = toilet.status.statusColor(),
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.size(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = toilet.name,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${strings.biotoiletStatusName(toilet.status)} • ${strings.biotoiletTypeName(toilet.type)} • ${toilet.distanceMeters} m",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Text(
+                    text = String.format("%.1f", toilet.cleanlinessRating),
+                    color = EcoGreen,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                InfoTile(
+                    title = strings.hours,
+                    value = toilet.openingHours,
+                    modifier = Modifier.weight(1f)
+                )
+                InfoTile(
+                    title = strings.access,
+                    value = buildString {
+                        append(if (toilet.isAccessible) strings.accessible else strings.limited)
+                        append(", ")
+                        append(if (toilet.isFamilyFriendly) strings.family else strings.standard)
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            MapCardActionButton(
+                label = strings.openDetails,
+                icon = Icons.Filled.ArrowForward,
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun WaterStationPreviewCard(
+    station: WaterStation,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalEcoStrings.current
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+    ) {
+        val strings = LocalEcoStrings.current
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .size(width = 46.dp, height = 4.dp)
+                    .background(Color(0xFFD9DED8), RoundedCornerShape(4.dp))
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .background(station.status.statusColor().copy(alpha = 0.14f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.WaterDrop,
+                        contentDescription = null,
+                        tint = station.status.statusColor(),
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.size(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = station.name,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${strings.waterStationStatusName(station.status)} • ${strings.waterStationTypeName(station.waterType)} • ${station.distanceMeters} m",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Text(
+                    text = String.format("%.1f", station.rating),
+                    color = Color(0xFF1976D2),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            MapCardActionButton(
+                label = strings.openDetails,
+                icon = Icons.Filled.ArrowForward,
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun EcoReportPreviewCard(
+    report: EcoReport,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalEcoStrings.current
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+    ) {
+        val strings = LocalEcoStrings.current
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .size(width = 46.dp, height = 4.dp)
+                    .background(Color(0xFFD9DED8), RoundedCornerShape(4.dp))
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .background(report.status.statusColor(report.severity).copy(alpha = 0.14f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = null,
+                        tint = report.status.statusColor(report.severity),
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.size(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = report.title,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${strings.ecoReportStatusName(report.status)} • ${strings.ecoReportSeverityName(report.severity)} • ${report.distanceMeters} m",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Text(
+                    text = "${report.verificationCount}",
+                    color = Color(0xFFD84315),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = report.wasteDescription,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            MapCardActionButton(
+                label = strings.openReport,
+                icon = Icons.Filled.ArrowForward,
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
 private fun RouteEstimateSection(
     start: GeoPoint,
     destination: RecyclingPoint,
@@ -1667,6 +2344,145 @@ private fun createWasteMarkerIcon(
     return BitmapDrawable(context.resources, bitmap)
 }
 
+private fun createBiotoiletMarkerIcon(
+    context: Context,
+    status: BiotoiletStatus,
+    selected: Boolean
+): BitmapDrawable {
+    val width = if (selected) 74 else 62
+    val height = if (selected) 84 else 72
+    val centerX = width / 2f
+    val circleRadius = if (selected) 25f else 21f
+    val circleCenterY = circleRadius + 7f
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = AndroidCanvas(bitmap)
+    val markerColor = status.markerColor()
+
+    val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = markerColor
+        style = Paint.Style.FILL
+    }
+    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = if (selected) 6f else 4f
+    }
+    val symbolPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.FILL
+        textAlign = Paint.Align.CENTER
+        textSize = if (selected) 24f else 20f
+        isFakeBoldText = true
+    }
+
+    val pointer = AndroidPath().apply {
+        moveTo(centerX - 13f, circleCenterY + circleRadius - 2f)
+        lineTo(centerX + 13f, circleCenterY + circleRadius - 2f)
+        lineTo(centerX, height - 5f)
+        close()
+    }
+
+    canvas.drawPath(pointer, fillPaint)
+    canvas.drawCircle(centerX, circleCenterY, circleRadius, fillPaint)
+    canvas.drawCircle(centerX, circleCenterY, circleRadius, strokePaint)
+    canvas.drawText("WC", centerX, circleCenterY + 7f, symbolPaint)
+
+    return BitmapDrawable(context.resources, bitmap)
+}
+
+private fun createWaterStationMarkerIcon(
+    context: Context,
+    status: WaterStationStatus,
+    selected: Boolean
+): BitmapDrawable {
+    val width = if (selected) 74 else 62
+    val height = if (selected) 84 else 72
+    val centerX = width / 2f
+    val circleRadius = if (selected) 25f else 21f
+    val circleCenterY = circleRadius + 7f
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = AndroidCanvas(bitmap)
+    val markerColor = status.markerColor()
+
+    val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = markerColor
+        style = Paint.Style.FILL
+    }
+    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = if (selected) 6f else 4f
+    }
+    val symbolPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.FILL
+        textAlign = Paint.Align.CENTER
+        textSize = if (selected) 25f else 21f
+        isFakeBoldText = true
+    }
+
+    val pointer = AndroidPath().apply {
+        moveTo(centerX - 13f, circleCenterY + circleRadius - 2f)
+        lineTo(centerX + 13f, circleCenterY + circleRadius - 2f)
+        lineTo(centerX, height - 5f)
+        close()
+    }
+
+    canvas.drawPath(pointer, fillPaint)
+    canvas.drawCircle(centerX, circleCenterY, circleRadius, fillPaint)
+    canvas.drawCircle(centerX, circleCenterY, circleRadius, strokePaint)
+    canvas.drawText("W", centerX, circleCenterY + 8f, symbolPaint)
+
+    return BitmapDrawable(context.resources, bitmap)
+}
+
+private fun createEcoReportMarkerIcon(
+    context: Context,
+    status: EcoReportStatus,
+    severity: EcoReportSeverity,
+    selected: Boolean
+): BitmapDrawable {
+    val width = if (selected) 74 else 62
+    val height = if (selected) 84 else 72
+    val centerX = width / 2f
+    val circleRadius = if (selected) 25f else 21f
+    val circleCenterY = circleRadius + 7f
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = AndroidCanvas(bitmap)
+    val markerColor = status.markerColor(severity)
+
+    val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = markerColor
+        style = Paint.Style.FILL
+    }
+    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = if (selected) 6f else 4f
+    }
+    val symbolPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.FILL
+        textAlign = Paint.Align.CENTER
+        textSize = if (selected) 24f else 20f
+        isFakeBoldText = true
+    }
+
+    val pointer = AndroidPath().apply {
+        moveTo(centerX - 13f, circleCenterY + circleRadius - 2f)
+        lineTo(centerX + 13f, circleCenterY + circleRadius - 2f)
+        lineTo(centerX, height - 5f)
+        close()
+    }
+
+    canvas.drawPath(pointer, fillPaint)
+    canvas.drawCircle(centerX, circleCenterY, circleRadius, fillPaint)
+    canvas.drawCircle(centerX, circleCenterY, circleRadius, strokePaint)
+    canvas.drawText("!", centerX, circleCenterY + 8f, symbolPaint)
+
+    return BitmapDrawable(context.resources, bitmap)
+}
+
 private fun createUserLocationMarkerIcon(context: Context): BitmapDrawable {
     val size = 58
     val center = size / 2f
@@ -1717,6 +2533,110 @@ private fun WasteType.markerLetter(): String {
 }
 
 private fun RecyclingPoint.toGeoPoint(): GeoPoint = GeoPoint(latitude, longitude)
+private fun Biotoilet.toGeoPoint(): GeoPoint = GeoPoint(latitude, longitude)
+private fun WaterStation.toGeoPoint(): GeoPoint = GeoPoint(latitude, longitude)
+private fun EcoReport.toGeoPoint(): GeoPoint = GeoPoint(latitude, longitude)
+
+private fun BiotoiletStatus.markerColor(): Int {
+    return when (this) {
+        BiotoiletStatus.Open -> android.graphics.Color.rgb(24, 137, 66)
+        BiotoiletStatus.Unknown -> android.graphics.Color.rgb(245, 166, 35)
+        BiotoiletStatus.Closed,
+        BiotoiletStatus.Maintenance -> android.graphics.Color.rgb(211, 47, 47)
+    }
+}
+
+@Composable
+private fun BiotoiletStatus.statusColor(): Color {
+    return when (this) {
+        BiotoiletStatus.Open -> Color(0xFF188942)
+        BiotoiletStatus.Unknown -> Color(0xFFF5A623)
+        BiotoiletStatus.Closed,
+        BiotoiletStatus.Maintenance -> Color(0xFFD32F2F)
+    }
+}
+
+private fun BiotoiletStatus.label(): String {
+    return when (this) {
+        BiotoiletStatus.Open -> "Open"
+        BiotoiletStatus.Unknown -> "Unknown"
+        BiotoiletStatus.Closed -> "Closed"
+        BiotoiletStatus.Maintenance -> "Maintenance"
+    }
+}
+
+private fun WaterStationStatus.markerColor(): Int {
+    return when (this) {
+        WaterStationStatus.Available -> android.graphics.Color.rgb(25, 118, 210)
+        WaterStationStatus.Unknown -> android.graphics.Color.rgb(245, 166, 35)
+        WaterStationStatus.TemporarilyUnavailable,
+        WaterStationStatus.Maintenance -> android.graphics.Color.rgb(211, 47, 47)
+    }
+}
+
+@Composable
+private fun WaterStationStatus.statusColor(): Color {
+    return when (this) {
+        WaterStationStatus.Available -> Color(0xFF1976D2)
+        WaterStationStatus.Unknown -> Color(0xFFF5A623)
+        WaterStationStatus.TemporarilyUnavailable,
+        WaterStationStatus.Maintenance -> Color(0xFFD32F2F)
+    }
+}
+
+private fun WaterStationStatus.label(): String {
+    return when (this) {
+        WaterStationStatus.Available -> "Available"
+        WaterStationStatus.Unknown -> "Unknown"
+        WaterStationStatus.TemporarilyUnavailable -> "Unavailable"
+        WaterStationStatus.Maintenance -> "Maintenance"
+    }
+}
+
+private fun WaterStationType.label(): String {
+    return when (this) {
+        WaterStationType.FreeDrinkingWater -> "Free water"
+        WaterStationType.RefillStation -> "Refill"
+        WaterStationType.FilteredWater -> "Filtered"
+        WaterStationType.WaterDispenser -> "Dispenser"
+        WaterStationType.BottledWaterVendingMachine -> "Vending"
+    }
+}
+
+private fun EcoReportStatus.markerColor(severity: EcoReportSeverity): Int {
+    return when (this) {
+        EcoReportStatus.Resolved -> android.graphics.Color.rgb(46, 125, 50)
+        EcoReportStatus.Rejected -> android.graphics.Color.rgb(117, 117, 117)
+        EcoReportStatus.InProgress -> android.graphics.Color.rgb(245, 166, 35)
+        EcoReportStatus.Submitted,
+        EcoReportStatus.Verified -> if (severity == EcoReportSeverity.High) {
+            android.graphics.Color.rgb(211, 47, 47)
+        } else {
+            android.graphics.Color.rgb(216, 67, 21)
+        }
+    }
+}
+
+@Composable
+private fun EcoReportStatus.statusColor(severity: EcoReportSeverity): Color {
+    return when (this) {
+        EcoReportStatus.Resolved -> Color(0xFF2E7D32)
+        EcoReportStatus.Rejected -> Color(0xFF757575)
+        EcoReportStatus.InProgress -> Color(0xFFF5A623)
+        EcoReportStatus.Submitted,
+        EcoReportStatus.Verified -> if (severity == EcoReportSeverity.High) Color(0xFFD32F2F) else Color(0xFFD84315)
+    }
+}
+
+private fun EcoReportStatus.label(): String {
+    return when (this) {
+        EcoReportStatus.Submitted -> "Submitted"
+        EcoReportStatus.Verified -> "Verified"
+        EcoReportStatus.InProgress -> "In progress"
+        EcoReportStatus.Resolved -> "Resolved"
+        EcoReportStatus.Rejected -> "Rejected"
+    }
+}
 
 private fun buildRoutePreviewPoints(start: GeoPoint, destination: RecyclingPoint): List<GeoPoint> {
     val end = destination.toGeoPoint()
@@ -1874,10 +2794,20 @@ private fun MapScreenPreview() {
         MapScreen(
             uiState = MapUiState(),
             onSearchQueryChange = {},
+            onMapLayerSelected = {},
             onWasteTypeSelected = {},
+            onBiotoiletFilterToggle = {},
+            onWaterStationFilterToggle = {},
+            onEcoReportFilterToggle = {},
             onPointSelected = {},
+            onBiotoiletSelected = {},
+            onWaterStationSelected = {},
+            onEcoReportSelected = {},
             onRouteClick = {},
-            onPointClick = {}
+            onPointClick = {},
+            onBiotoiletClick = {},
+            onWaterStationClick = {},
+            onEcoReportClick = {}
         )
     }
 }

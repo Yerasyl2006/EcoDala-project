@@ -27,13 +27,17 @@ import com.ecodala.feature.auth.presentation.RegisterRoute
 import com.ecodala.feature.challenges.presentation.ChallengesRoute
 import com.ecodala.feature.home.presentation.HomeRoute
 import com.ecodala.feature.leaderboard.presentation.LeaderboardRoute
+import com.ecodala.feature.map.presentation.BiotoiletDetailsRoute
+import com.ecodala.feature.map.presentation.EcoReportDetailsRoute
 import com.ecodala.feature.map.presentation.MapRoute
 import com.ecodala.feature.map.presentation.RecyclingPointDetailsRoute
+import com.ecodala.feature.map.presentation.WaterStationDetailsRoute
 import com.ecodala.feature.profile.presentation.NotificationsRoute
 import com.ecodala.feature.profile.presentation.ProfileRoute
 import com.ecodala.feature.profile.presentation.RecyclingHistoryRoute
 import com.ecodala.feature.profile.presentation.SettingsRoute
 import com.ecodala.feature.profile.presentation.SupportRoute
+import com.ecodala.feature.scanner.presentation.AiWasteScannerRoute
 import com.ecodala.feature.splash.presentation.SplashScreen
 import com.ecodala.feature.submit.presentation.SubmitWasteRoute
 import com.ecodala.feature.tree.presentation.VirtualTreeRoute
@@ -147,6 +151,15 @@ fun EcoDalaApp(navController: NavHostController = rememberNavController()) {
                 MapRoute(
                     onPointDetailsClick = { pointId ->
                         navController.navigate(EcoDalaRoute.RecyclingPointDetails.createRoute(pointId))
+                    },
+                    onBiotoiletDetailsClick = { toiletId ->
+                        navController.navigate(EcoDalaRoute.BiotoiletDetails.createRoute(toiletId))
+                    },
+                    onWaterStationDetailsClick = { stationId ->
+                        navController.navigate(EcoDalaRoute.WaterStationDetails.createRoute(stationId))
+                    },
+                    onEcoReportDetailsClick = { reportId ->
+                        navController.navigate(EcoDalaRoute.EcoReportDetails.createRoute(reportId))
                     }
                 )
             }
@@ -156,6 +169,26 @@ fun EcoDalaApp(navController: NavHostController = rememberNavController()) {
                     onBuildRouteClick = { navController.navigate(EcoDalaRoute.Map.route) },
                     onCallClick = {},
                     onShareClick = {}
+                )
+            }
+            composable(EcoDalaRoute.BiotoiletDetails.route) { backStackEntry ->
+                BiotoiletDetailsRoute(
+                    toiletId = backStackEntry.arguments?.getString("toiletId"),
+                    onBackClick = { navController.popBackStack() },
+                    onBuildRouteClick = { navController.navigate(EcoDalaRoute.Map.route) }
+                )
+            }
+            composable(EcoDalaRoute.WaterStationDetails.route) { backStackEntry ->
+                WaterStationDetailsRoute(
+                    stationId = backStackEntry.arguments?.getString("stationId"),
+                    onBackClick = { navController.popBackStack() },
+                    onBuildRouteClick = { navController.navigate(EcoDalaRoute.Map.route) }
+                )
+            }
+            composable(EcoDalaRoute.EcoReportDetails.route) { backStackEntry ->
+                EcoReportDetailsRoute(
+                    reportId = backStackEntry.arguments?.getString("reportId"),
+                    onBackClick = { navController.popBackStack() }
                 )
             }
             composable(EcoDalaRoute.SubmitWaste.route) {
@@ -221,7 +254,11 @@ fun EcoDalaApp(navController: NavHostController = rememberNavController()) {
                     onBackClick = { navController.popBackStack() }
                 )
             }
-            composable(EcoDalaRoute.AiWasteScanner.route) { PlaceholderScreen("AI Waste Scanner") }
+            composable(EcoDalaRoute.AiWasteScanner.route) {
+                AiWasteScannerRoute(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
     }
 }

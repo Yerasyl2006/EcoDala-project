@@ -12,6 +12,15 @@ sealed class EcoDalaRoute(val route: String) {
     data object RecyclingPointDetails : EcoDalaRoute("recycling-point/{pointId}") {
         fun createRoute(pointId: String) = "recycling-point/$pointId"
     }
+    data object BiotoiletDetails : EcoDalaRoute("biotoilet/{toiletId}") {
+        fun createRoute(toiletId: String) = "biotoilet/$toiletId"
+    }
+    data object WaterStationDetails : EcoDalaRoute("water-station/{stationId}") {
+        fun createRoute(stationId: String) = "water-station/$stationId"
+    }
+    data object EcoReportDetails : EcoDalaRoute("eco-report/{reportId}") {
+        fun createRoute(reportId: String) = "eco-report/$reportId"
+    }
     data object SubmitWaste : EcoDalaRoute("submit-waste")
     data object VirtualTree : EcoDalaRoute("virtual-tree")
     data object Challenges : EcoDalaRoute("challenges")
