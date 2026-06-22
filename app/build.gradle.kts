@@ -23,10 +23,10 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "ECODALA_API_BASE_URL", "\"http://10.0.2.2:8000/api/\"")
+            buildConfigField("String", "ECODALA_API_BASE_URL", "\"http://127.0.0.1:8000/api/\"")
         }
         release {
-            buildConfigField("String", "ECODALA_API_BASE_URL", "\"http://10.0.2.2:8000/api/\"")
+            buildConfigField("String", "ECODALA_API_BASE_URL", "\"http://10.160.0.125:8000/api/\"")
             isMinifyEnabled = false
         }
     }

@@ -12,18 +12,20 @@ import com.ecodala.core.data.remote.dto.RecyclingPointDto
 import com.ecodala.core.data.remote.dto.RegisterRequestDto
 import com.ecodala.core.data.remote.dto.ScannerResultDto
 import com.ecodala.core.data.remote.dto.UserDto
-import com.ecodala.core.data.remote.dto.WasteScanRequestDto
+import com.ecodala.core.data.remote.dto.WasteCategoryDto
 import com.ecodala.core.data.remote.dto.WasteSubmissionDto
 import com.ecodala.core.data.remote.dto.WasteSubmissionRequestDto
 import com.ecodala.core.data.remote.dto.WaterStationDto
 import retrofit2.http.Body
+import retrofit2.http.Field
+import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface EcoDalaApi {
-    @POST("auth/token/")
+    @POST("auth/login/")
     suspend fun login(@Body request: LoginRequestDto): JwtTokenDto
 
     @POST("auth/register/")
@@ -32,59 +34,63 @@ interface EcoDalaApi {
     @GET("auth/me/")
     suspend fun getMe(): UserDto
 
-    @GET("places/recycling-points/")
-    suspend fun getRecyclingPoints(@Query("waste_type") wasteType: String? = null): PaginatedResponseDto<RecyclingPointDto>
+    @GET("recycling-points/")
+    suspend fun getRecyclingPoints(@Query("search") search: String? = null): PaginatedResponseDto<RecyclingPointDto>
 
-    @GET("places/recycling-points/{id}/")
+    @GET("recycling-points/{id}/")
     suspend fun getRecyclingPoint(@Path("id") id: String): RecyclingPointDto
 
-    @GET("places/biotoilets/")
+    @GET("waste-categories/")
+    suspend fun getWasteCategories(): PaginatedResponseDto<WasteCategoryDto>
+
+    @GET("biotoilets/")
     suspend fun getBiotoilets(
         @Query("free") free: Boolean? = null,
         @Query("accessible") accessible: Boolean? = null,
         @Query("open_now") openNow: Boolean? = null
     ): PaginatedResponseDto<BiotoiletDto>
 
-    @GET("places/biotoilets/{id}/")
+    @GET("biotoilets/{id}/")
     suspend fun getBiotoilet(@Path("id") id: String): BiotoiletDto
 
-    @GET("places/water-stations/")
+    @GET("water-stations/")
     suspend fun getWaterStations(
         @Query("free") free: Boolean? = null,
         @Query("open_now") openNow: Boolean? = null,
         @Query("refill") refill: Boolean? = null
     ): PaginatedResponseDto<WaterStationDto>
 
-    @GET("places/water-stations/{id}/")
+    @GET("water-stations/{id}/")
     suspend fun getWaterStation(@Path("id") id: String): WaterStationDto
 
-    @GET("reports/eco-reports/")
+    @GET("eco-reports/")
     suspend fun getEcoReports(
         @Query("status") status: String? = null,
         @Query("severity") severity: String? = null
     ): PaginatedResponseDto<EcoReportDto>
 
-    @GET("reports/eco-reports/{id}/")
+    @GET("eco-reports/{id}/")
     suspend fun getEcoReport(@Path("id") id: String): EcoReportDto
 
-    @POST("reports/eco-reports/{id}/verify/")
+    @POST("eco-reports/{id}/verify/")
     suspend fun verifyEcoReport(@Path("id") id: String): EcoReportDto
 
-    @GET("reports/waste-submissions/")
+    @GET("waste-submissions/")
     suspend fun getWasteSubmissions(): PaginatedResponseDto<WasteSubmissionDto>
 
-    @POST("reports/waste-submissions/")
+    @POST("submit-waste/")
     suspend fun submitWaste(@Body request: WasteSubmissionRequestDto): WasteSubmissionDto
 
-    @GET("gamification/challenges/")
+    @GET("challenges/")
     suspend fun getChallenges(@Query("type") type: String? = null): PaginatedResponseDto<ChallengeDto>
 
-    @GET("gamification/achievements/")
+    @GET("achievements/")
     suspend fun getAchievements(): PaginatedResponseDto<AchievementDto>
 
-    @GET("gamification/leaderboard/")
-    suspend fun getLeaderboard(): PaginatedResponseDto<LeaderboardUserDto>
+    @GET("leaderboard/")
+    suspend fun getLeaderboard(): List<LeaderboardUserDto>
 
-    @POST("scanner/scan/")
-    suspend fun scanWaste(@Body request: WasteScanRequestDto): ScannerResultDto
+    @FormUrlEncoded
+    @POST("ai-waste-scanner/analyze/")
+    suspend fun scanWaste(@Field("provider") provider: String = "demo"): ScannerResultDto
 }

@@ -17,7 +17,7 @@ class ApiAuthRepository(
         return runCatching {
             val token = api.login(LoginRequestDto(email = email.trim(), password = password))
             SessionManager.saveRawSession(accessToken = token.access, refreshToken = token.refresh)
-            val user = api.getMe().toDomain()
+            val user = token.user?.toDomain() ?: api.getMe().toDomain()
             SessionManager.saveSession(token = token.access, refreshToken = token.refresh, user = user)
             user
         }
@@ -25,16 +25,12 @@ class ApiAuthRepository(
 
     override suspend fun register(fullName: String, email: String, password: String): Result<EcoUser> {
         return runCatching {
-            val parts = fullName.trim().split(" ", limit = 2)
-            val firstName = parts.getOrNull(0).orEmpty().ifBlank { "Eco" }
-            val lastName = parts.getOrNull(1).orEmpty()
             api.register(
                 RegisterRequestDto(
-                    username = email.substringBefore("@").ifBlank { "ecodala_user" },
                     email = email.trim(),
                     password = password,
-                    firstName = firstName,
-                    lastName = lastName
+                    fullName = fullName.trim().ifBlank { "EcoDala User" },
+                    city = "Almaty"
                 )
             )
             login(email, password).getOrThrow()

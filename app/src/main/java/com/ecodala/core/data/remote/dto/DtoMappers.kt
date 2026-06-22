@@ -25,42 +25,41 @@ import com.ecodala.core.domain.model.WaterStationType
 
 fun UserDto.toDomain(): EcoUser {
     return EcoUser(
-        id = id.toString(),
-        fullName = fullName?.takeIf { it.isNotBlank() }
-            ?: listOfNotNull(firstName, lastName).joinToString(" ").ifBlank { username },
+        id = id,
+        fullName = fullName?.takeIf { it.isNotBlank() } ?: email.substringBefore("@"),
         email = email,
         avatarUrl = avatar,
         ecoPoints = ecoPoints,
-        globalRank = globalRank,
+        globalRank = 0,
         level = level,
-        joinedAt = "Backend"
+        joinedAt = createdAt ?: "Backend"
     )
 }
 
 fun RecyclingPointDto.toDomain(): RecyclingPoint {
     return RecyclingPoint(
-        id = id.toString(),
+        id = id,
         name = name,
         address = address,
         phone = phone.orEmpty(),
-        openingHours = openingHours,
-        latitude = latitude,
-        longitude = longitude,
-        rating = rating,
+        openingHours = workingHours ?: "08:00 - 20:00",
+        latitude = latitude.toDoubleOrNull() ?: 0.0,
+        longitude = longitude.toDoubleOrNull() ?: 0.0,
+        rating = if (isActive) 4.8 else 3.8,
         distanceMeters = 0,
-        acceptedWasteTypes = acceptedWasteTypes.mapNotNull { it.toWasteTypeOrNull() },
-        rewardPoints = rewardPoints
+        acceptedWasteTypes = acceptedCategories.mapNotNull { it.slug.toWasteTypeOrNull() },
+        rewardPoints = acceptedCategories.firstOrNull()?.pointsPerKg?.toInt() ?: 10
     )
 }
 
 fun BiotoiletDto.toDomain(): Biotoilet {
     return Biotoilet(
-        id = id.toString(),
+        id = id,
         name = name,
         photoLabel = photo ?: "Biotoilet location",
         address = address,
-        latitude = latitude,
-        longitude = longitude,
+        latitude = latitude.toDoubleOrNull() ?: 0.0,
+        longitude = longitude.toDoubleOrNull() ?: 0.0,
         distanceMeters = 0,
         openingHours = openingHours,
         status = status.toBiotoiletStatus(),
@@ -76,12 +75,12 @@ fun BiotoiletDto.toDomain(): Biotoilet {
 
 fun WaterStationDto.toDomain(): WaterStation {
     return WaterStation(
-        id = id.toString(),
+        id = id,
         name = name,
         photoLabel = photo ?: "Water station",
         address = address,
-        latitude = latitude,
-        longitude = longitude,
+        latitude = latitude.toDoubleOrNull() ?: 0.0,
+        longitude = longitude.toDoubleOrNull() ?: 0.0,
         distanceMeters = 0,
         workingHours = workingHours,
         waterType = waterType.toWaterStationType(),
@@ -95,12 +94,12 @@ fun WaterStationDto.toDomain(): WaterStation {
 
 fun EcoReportDto.toDomain(): EcoReport {
     return EcoReport(
-        id = id.toString(),
+        id = id,
         title = title,
         photoLabel = photo ?: "Eco report photo",
         address = address,
-        latitude = latitude,
-        longitude = longitude,
+        latitude = latitude.toDoubleOrNull() ?: 0.0,
+        longitude = longitude.toDoubleOrNull() ?: 0.0,
         distanceMeters = 0,
         wasteDescription = wasteDescription,
         status = status.toEcoReportStatus(),
@@ -114,28 +113,28 @@ fun EcoReportDto.toDomain(): EcoReport {
 
 fun WasteSubmissionDto.toDomain(userId: String): WasteSubmission {
     return WasteSubmission(
-        id = id.toString(),
+        id = id,
         userId = userId,
-        wasteType = wasteType.toWasteTypeOrNull() ?: WasteType.Plastic,
-        quantity = quantity,
-        unit = unit,
+        wasteType = categoryDetail?.slug?.toWasteTypeOrNull() ?: WasteType.Plastic,
+        quantity = weightKg.toDoubleOrNull() ?: 0.0,
+        unit = "kg",
         photoUrl = null,
         comment = comment,
-        earnedPoints = earnedPoints,
+        earnedPoints = pointsAwarded,
         createdAt = createdAt
     )
 }
 
 fun ChallengeDto.toDomain(): Challenge {
     return Challenge(
-        id = id.toString(),
+        id = id,
         title = title,
         description = description,
-        progress = 0,
-        target = target,
+        progress = progress.toDoubleOrNull()?.toInt() ?: 0,
+        target = (targetKg.toDoubleOrNull()?.toInt() ?: 1).coerceAtLeast(1),
         rewardPoints = rewardPoints,
-        status = ChallengeStatus.Active,
-        type = when (type) {
+        status = if (isCompleted) ChallengeStatus.Completed else ChallengeStatus.Active,
+        type = when (status?.lowercase()) {
             "weekly" -> ChallengeType.Weekly
             "special" -> ChallengeType.Special
             else -> ChallengeType.Daily
@@ -145,32 +144,32 @@ fun ChallengeDto.toDomain(): Challenge {
 
 fun AchievementDto.toDomain(): Achievement {
     return Achievement(
-        id = id.toString(),
+        id = id,
         title = title,
         description = description,
-        unlockedAt = null,
-        iconName = iconName,
-        isUnlocked = false,
-        progressPercent = 0,
-        bonusPoints = bonusPoints
+        unlockedAt = if (unlocked) createdAt else null,
+        iconName = icon ?: code ?: "eco",
+        isUnlocked = unlocked,
+        progressPercent = if (unlocked) 100 else 0,
+        bonusPoints = rule?.threshold?.toInt() ?: 0
     )
 }
 
 fun LeaderboardUserDto.toDomain(index: Int, currentUserId: String?): LeaderboardEntry {
     return LeaderboardEntry(
-        rank = index + 1,
-        userId = id.toString(),
+        rank = rank.takeIf { it > 0 } ?: index + 1,
+        userId = id,
         name = fullName,
         points = ecoPoints,
-        isCurrentUser = currentUserId == id.toString()
+        isCurrentUser = currentUserId == id
     )
 }
 
 fun ScannerResultDto.toDomain(): ScannerResult {
     return ScannerResult(
-        wasteType = wasteType.toWasteTypeOrNull() ?: WasteType.Plastic,
+        wasteType = predictedCategory?.slug?.toWasteTypeOrNull() ?: WasteType.Plastic,
         confidence = confidence,
-        disposalHint = disposalHint
+        disposalHint = advice ?: "Recycle it at the nearest EcoDala point."
     )
 }
 

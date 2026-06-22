@@ -2,7 +2,6 @@ package com.ecodala.core.data.repository
 
 import com.ecodala.core.data.remote.EcoDalaApi
 import com.ecodala.core.data.remote.NetworkModule
-import com.ecodala.core.data.remote.dto.WasteScanRequestDto
 import com.ecodala.core.data.remote.dto.WasteSubmissionRequestDto
 import com.ecodala.core.data.remote.dto.toApiValue
 import com.ecodala.core.data.remote.dto.toDomain
@@ -59,11 +58,22 @@ class ApiEcoRepository(
     }
 
     suspend fun submitWaste(type: WasteType, quantity: Double, unit: String, comment: String?): Result<WasteSubmission> = runCatching {
+        val category = api.getWasteCategories().results
+            .firstOrNull { it.slug.equals(type.toApiValue(), ignoreCase = true) }
+            ?: error("Waste category '${type.toApiValue()}' was not found on backend.")
+        val point = api.getRecyclingPoints(type.toApiValue()).results
+            .firstOrNull { point -> point.acceptedCategories.any { it.id == category.id || it.slug == category.slug } }
+            ?: api.getRecyclingPoints().results.firstOrNull()
+            ?: error("No recycling point was found on backend.")
+
         api.submitWaste(
             WasteSubmissionRequestDto(
-                wasteType = type.toApiValue(),
-                quantity = quantity,
-                unit = unit,
+                category = category.id,
+                recyclingPoint = point.id,
+                weightKg = when (unit.lowercase()) {
+                    "g", "gram", "grams" -> (quantity / 1000.0).toString()
+                    else -> quantity.toString()
+                },
                 comment = comment?.takeIf { it.isNotBlank() }
             )
         ).toDomain(SessionManager.session.value.userId ?: "me")
@@ -83,10 +93,10 @@ class ApiEcoRepository(
 
     suspend fun leaderboard(): Result<List<LeaderboardEntry>> = runCatching {
         val currentUserId = SessionManager.session.value.userId
-        api.getLeaderboard().results.mapIndexed { index, dto -> dto.toDomain(index, currentUserId) }
+        api.getLeaderboard().mapIndexed { index, dto -> dto.toDomain(index, currentUserId) }
     }
 
     suspend fun scanWaste(hint: String): Result<ScannerResult> = runCatching {
-        api.scanWaste(WasteScanRequestDto(hint = hint)).toDomain()
+        api.scanWaste(provider = hint.ifBlank { "demo" }).toDomain()
     }
 }
