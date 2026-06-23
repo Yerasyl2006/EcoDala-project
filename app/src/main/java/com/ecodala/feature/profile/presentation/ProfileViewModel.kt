@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.ecodala.core.data.dummy.DummyEcoData
 import com.ecodala.core.data.repository.ApiAuthRepository
 import com.ecodala.core.data.repository.ApiEcoRepository
-import com.ecodala.core.data.repository.DemoAuthRepository
 import com.ecodala.core.data.repository.DemoPointsEconomyRepository
+import com.ecodala.core.domain.model.EcoRatingCalculator
 import com.ecodala.core.domain.model.EcoUser
 import com.ecodala.core.domain.usecase.GetMonthlyImpactUseCase
 import com.ecodala.core.domain.usecase.GetPointsWalletUseCase
@@ -106,7 +106,8 @@ class ProfileViewModel(
     private fun loadEconomy() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            backendRepository.currentUser()
+            val userResult = backendRepository.currentUser()
+            userResult
                 .onSuccess { user ->
                     _user.value = user
                     SessionManager.saveSession(
@@ -120,16 +121,22 @@ class ProfileViewModel(
             val impact = getMonthlyImpactUseCase(userId).getOrNull()
             val streak = getStreakSummaryUseCase(userId).getOrNull()
             val total = wallet?.totalPoints ?: DummyEcoData.currentUser.ecoPoints
+            val rating = EcoRatingCalculator.calculate(total)
 
             _uiState.value = ProfileUiState(
+                errorMessage = userResult.exceptionOrNull()?.message,
                 thisMonthKg = impact?.recycledKg ?: 0.0,
                 totalPoints = total,
                 thisMonthPoints = wallet?.thisMonthPoints ?: 0,
-                trees = (total / 250).coerceAtLeast(1),
+                trees = rating.level.coerceAtLeast(1),
                 streakDays = streak?.currentDays ?: 0,
                 nextStreakRewardPoints = streak?.nextRewardPoints ?: 0,
                 editFullName = _user.value.fullName,
                 editEmail = _user.value.email
+            )
+            _user.value = _user.value.copy(
+                ecoPoints = total,
+                level = rating.level
             )
         }
     }

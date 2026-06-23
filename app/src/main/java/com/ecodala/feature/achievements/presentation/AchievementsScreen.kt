@@ -81,6 +81,7 @@ fun AchievementsScreen(
     val unlocked = achievements.filter { it.isUnlocked }
     val locked = achievements.filterNot { it.isUnlocked }
     val progress = if (achievements.isEmpty()) 0f else unlocked.size / achievements.size.toFloat()
+    val strings = LocalEcoStrings.current
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -109,7 +110,7 @@ fun AchievementsScreen(
 
                 Spacer(modifier = Modifier.height(22.dp))
 
-                SectionTitle("Unlocked", "${unlocked.size} earned")
+                SectionTitle(strings.completed, "${unlocked.size} ${strings.achievements}")
                 Spacer(modifier = Modifier.height(12.dp))
                 unlocked.forEach { achievement ->
                     AchievementCard(achievement = achievement)
@@ -118,7 +119,7 @@ fun AchievementsScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                SectionTitle("In Progress", "${locked.size} remaining")
+                SectionTitle(strings.ecoProgress, "${locked.size} ${strings.locked}")
                 Spacer(modifier = Modifier.height(12.dp))
                 locked.forEach { achievement ->
                     AchievementCard(achievement = achievement)
@@ -254,6 +255,7 @@ private fun SectionTitle(title: String, trailing: String) {
 private fun AchievementCard(
     achievement: Achievement,
 ) {
+    val strings = LocalEcoStrings.current
     val visual = achievement.visual()
     val isLocked = !achievement.isUnlocked
 
@@ -289,7 +291,7 @@ private fun AchievementCard(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = achievement.title,
+                        text = strings.localizedAchievementTitle(achievement.title),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
@@ -305,7 +307,7 @@ private fun AchievementCard(
                     }
                 }
                 Text(
-                    text = achievement.description,
+                    text = strings.localizedAchievementDescription(achievement.description),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -317,13 +319,13 @@ private fun AchievementCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = achievement.unlockedAt.orEmpty(),
+                            text = strings.localizedDate(achievement.unlockedAt.orEmpty()),
                             color = EcoGreen,
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "+${achievement.bonusPoints} pts",
+                            text = "+${strings.points(achievement.bonusPoints)}",
                             color = EcoGreen,
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold
@@ -350,7 +352,7 @@ private fun AchievementCard(
                             fontSize = 11.sp
                         )
                         Text(
-                            text = "+${achievement.bonusPoints} pts",
+                            text = "+${strings.points(achievement.bonusPoints)}",
                             color = Color(0xFF758077),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold

@@ -52,6 +52,8 @@ import com.ecodala.core.data.dummy.DummyEcoData
 import com.ecodala.core.domain.model.WasteSubmission
 import com.ecodala.core.domain.model.WasteType
 import com.ecodala.core.localization.LocalEcoStrings
+import com.ecodala.core.ui.components.EcoErrorState
+import com.ecodala.core.ui.components.EcoInlineLoading
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
 
@@ -66,6 +68,7 @@ fun RecyclingHistoryRoute(
     RecyclingHistoryScreen(
         uiState = uiState,
         onTypeSelected = viewModel::onTypeSelected,
+        onRetryClick = viewModel::refresh,
         onBackClick = onBackClick,
         modifier = modifier
     )
@@ -75,6 +78,7 @@ fun RecyclingHistoryRoute(
 fun RecyclingHistoryScreen(
     uiState: RecyclingHistoryUiState,
     onTypeSelected: (WasteType?) -> Unit,
+    onRetryClick: () -> Unit = {},
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -104,6 +108,19 @@ fun RecyclingHistoryScreen(
                 )
 
                 Spacer(modifier = Modifier.height(18.dp))
+
+                if (uiState.isLoading) {
+                    EcoInlineLoading(label = "Refreshing history...")
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                uiState.errorMessage?.let { message ->
+                    EcoErrorState(
+                        message = "Showing saved history where available. $message",
+                        onRetryClick = onRetryClick
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
 
                 FilterRow(
                     selectedType = uiState.selectedType,
@@ -197,7 +214,7 @@ private fun HistorySummaryCard(
             Spacer(modifier = Modifier.height(18.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SummaryTile("$totalKg kg", "Waste", Modifier.weight(1f))
+                SummaryTile("$totalKg kg", LocalEcoStrings.current.wasteLabel, Modifier.weight(1f))
                 SummaryTile(totalPoints.toString(), LocalEcoStrings.current.pointsLabel, Modifier.weight(1f))
                 SummaryTile(totalSubmissions.toString(), LocalEcoStrings.current.submit, Modifier.weight(1f))
             }
@@ -277,6 +294,7 @@ private fun FilterChip(
 
 @Composable
 private fun HistoryCard(submission: WasteSubmission) {
+    val strings = LocalEcoStrings.current
     val visual = submission.wasteType.visual()
 
     Card(
@@ -312,13 +330,13 @@ private fun HistoryCard(submission: WasteSubmission) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = LocalEcoStrings.current.wasteTypeName(submission.wasteType),
+                        text = strings.wasteTypeName(submission.wasteType),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "+${LocalEcoStrings.current.points(submission.earnedPoints)}",
+                        text = "+${strings.points(submission.earnedPoints)}",
                         color = EcoGreen,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
@@ -328,7 +346,7 @@ private fun HistoryCard(submission: WasteSubmission) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "${formatQuantity(submission.quantity)} ${submission.unit} • ${submission.createdAt}",
+                    text = "${formatQuantity(submission.quantity)} ${submission.unit} • ${localizeSubmissionDate(submission.createdAt, strings)}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -336,7 +354,7 @@ private fun HistoryCard(submission: WasteSubmission) {
                 submission.comment?.let {
                     Spacer(modifier = Modifier.height(5.dp))
                     Text(
-                        text = it,
+                        text = localizeSubmissionComment(it, strings),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -352,6 +370,35 @@ private fun HistoryCard(submission: WasteSubmission) {
                 modifier = Modifier.size(20.dp)
             )
         }
+    }
+}
+
+private fun localizeSubmissionDate(value: String, strings: com.ecodala.core.localization.EcoStrings): String {
+    val parts = value.split(",", limit = 2)
+    return if (parts.size == 2) {
+        "${strings.localizedDate(parts[0].trim())},${parts[1]}"
+    } else {
+        strings.localizedDate(value)
+    }
+}
+
+private fun localizeSubmissionComment(value: String, strings: com.ecodala.core.localization.EcoStrings): String {
+    return when (strings.languageTag) {
+        "ru" -> when (value) {
+            "Bottles from campus cleanup" -> "Бутылки после уборки кампуса"
+            "Old notebooks and printed sheets" -> "Старые тетради и распечатки"
+            "Used AA batteries" -> "Использованные батарейки AA"
+            "Old chargers" -> "Старые зарядные устройства"
+            else -> value
+        }
+        "kk" -> when (value) {
+            "Bottles from campus cleanup" -> "Кампус тазалауынан қалған бөтелкелер"
+            "Old notebooks and printed sheets" -> "Ескі дәптерлер мен баспа қағаздар"
+            "Used AA batteries" -> "Қолданылған AA батареялар"
+            "Old chargers" -> "Ескі қуаттағыштар"
+            else -> value
+        }
+        else -> value
     }
 }
 

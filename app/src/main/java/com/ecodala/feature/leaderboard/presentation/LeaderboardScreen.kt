@@ -668,6 +668,9 @@ private fun LeaderboardRow(
     entry: LeaderboardEntry,
     compactHeight: Boolean
 ) {
+    val strings = LocalEcoStrings.current
+    val displayName = if (entry.isCurrentUser) strings.currentUserLeaderboardName else entry.name
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -684,7 +687,7 @@ private fun LeaderboardRow(
         )
 
         AvatarCircle(
-            name = entry.name,
+            name = displayName,
             size = if (compactHeight) 36.dp else 42.dp,
             borderColor = if (entry.isCurrentUser) EcoGreen else Color.Transparent
         )
@@ -692,7 +695,7 @@ private fun LeaderboardRow(
         Spacer(modifier = Modifier.size(14.dp))
 
         Text(
-            text = entry.name,
+            text = displayName,
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium,
@@ -700,7 +703,7 @@ private fun LeaderboardRow(
         )
 
         Text(
-            text = entry.points.toString(),
+            text = strings.points(entry.points),
             color = EcoGreen,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold

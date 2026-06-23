@@ -65,6 +65,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ecodala.core.data.dummy.DummyEcoData
 import com.ecodala.core.domain.model.EcoUser
 import com.ecodala.core.localization.LocalEcoStrings
+import com.ecodala.core.ui.components.EcoErrorState
+import com.ecodala.core.ui.components.EcoInlineLoading
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
 
@@ -98,6 +100,7 @@ fun ProfileRoute(
         onSaveProfileClick = viewModel::saveProfile,
         onFullNameChange = viewModel::onEditFullNameChange,
         onEmailChange = viewModel::onEditEmailChange,
+        onRetryClick = viewModel::retry,
         modifier = modifier
     )
 }
@@ -118,6 +121,7 @@ fun ProfileScreen(
     onSaveProfileClick: () -> Unit = {},
     onFullNameChange: (String) -> Unit = {},
     onEmailChange: (String) -> Unit = {},
+    onRetryClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -149,12 +153,25 @@ fun ProfileScreen(
 
                 if (uiState.profileSaved) {
                     Text(
-                        text = "Profile updated",
+                        text = LocalEcoStrings.current.profileUpdated,
                         color = EcoGreen,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                if (uiState.isLoading) {
+                    EcoInlineLoading(label = "Refreshing profile...")
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                uiState.errorMessage?.let { message ->
+                    EcoErrorState(
+                        message = "Showing saved profile where available. $message",
+                        onRetryClick = onRetryClick
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
 
                 if (uiState.isEditingProfile) {
@@ -233,7 +250,7 @@ private fun EditProfileButton(onClick: () -> Unit) {
         )
         Spacer(modifier = Modifier.size(7.dp))
         Text(
-            text = "Edit profile",
+            text = LocalEcoStrings.current.editProfile,
             color = EcoGreen,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
@@ -250,6 +267,8 @@ private fun EditProfileCard(
     onSaveClick: () -> Unit,
     onCancelClick: () -> Unit
 ) {
+    val strings = LocalEcoStrings.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -261,18 +280,18 @@ private fun EditProfileCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Edit account info",
+                text = strings.editAccountInfo,
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             ProfileInput(
-                label = "Full name",
+                label = strings.fullName,
                 value = fullName,
                 onValueChange = onFullNameChange
             )
             ProfileInput(
-                label = "Email",
+                label = strings.emailAddress,
                 value = email,
                 onValueChange = onEmailChange
             )
@@ -283,7 +302,7 @@ private fun EditProfileCard(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
                 ) {
-                    Text("Save", fontWeight = FontWeight.Bold)
+                    Text(strings.save, fontWeight = FontWeight.Bold)
                 }
                 Button(
                     onClick = onCancelClick,
@@ -294,7 +313,7 @@ private fun EditProfileCard(
                         contentColor = MaterialTheme.colorScheme.onSurface
                     )
                 ) {
-                    Text("Cancel", fontWeight = FontWeight.Bold)
+                    Text(strings.cancel, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -336,6 +355,8 @@ private fun ProfileInput(
 
 @Composable
 private fun StreakStatusCard(uiState: ProfileUiState) {
+    val strings = LocalEcoStrings.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -364,13 +385,13 @@ private fun StreakStatusCard(uiState: ProfileUiState) {
             Spacer(modifier = Modifier.size(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "${uiState.streakDays} day active streak",
+                    text = strings.streakSummary(uiState.streakDays, uiState.nextStreakRewardPoints).substringBefore(" - "),
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Next streak reward: +${uiState.nextStreakRewardPoints} pts",
+                    text = strings.streakSummary(uiState.streakDays, uiState.nextStreakRewardPoints).substringAfter(" - ", strings.points(uiState.nextStreakRewardPoints)),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )

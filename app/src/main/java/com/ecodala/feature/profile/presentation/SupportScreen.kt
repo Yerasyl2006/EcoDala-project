@@ -206,6 +206,8 @@ private fun SupportContactRow(
     contact: SupportContact,
     icon: ImageVector
 ) {
+    val strings = LocalEcoStrings.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -227,7 +229,7 @@ private fun SupportContactRow(
             Spacer(modifier = Modifier.size(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = contact.title,
+                    text = strings.supportContactTitle(contact.title),
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
@@ -239,7 +241,7 @@ private fun SupportContactRow(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = contact.subtitle,
+                    text = strings.supportContactSubtitle(contact.subtitle),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -273,7 +275,7 @@ private fun RequestCard(
             ) {
                 uiState.topics.forEach { topic ->
                     TopicChip(
-                        title = topic,
+                        title = LocalEcoStrings.current.supportTopic(topic),
                         selected = topic == uiState.selectedTopic,
                         onClick = { onTopicClick(topic) }
                     )
@@ -315,7 +317,7 @@ private fun RequestCard(
             ) {
                 Icon(Icons.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.size(8.dp))
-                Text("Send request", fontWeight = FontWeight.Bold)
+                Text(LocalEcoStrings.current.sendRequest, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -352,6 +354,8 @@ private fun FaqSection(faqs: List<SupportFaq>) {
 
 @Composable
 private fun FaqRow(faq: SupportFaq) {
+    val strings = LocalEcoStrings.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -366,14 +370,14 @@ private fun FaqRow(faq: SupportFaq) {
             Spacer(modifier = Modifier.size(12.dp))
             Column {
                 Text(
-                    text = faq.question,
+                    text = strings.supportFaqQuestion(faq.question),
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = faq.answer,
+                    text = strings.supportFaqAnswer(faq.answer),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )

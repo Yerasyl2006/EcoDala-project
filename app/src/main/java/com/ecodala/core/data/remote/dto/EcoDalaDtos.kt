@@ -25,8 +25,12 @@ data class RegisterRequestDto(
 
 data class JwtTokenDto(
     val access: String,
-    val refresh: String,
+    val refresh: String = "",
     val user: UserDto? = null
+)
+
+data class RefreshTokenRequestDto(
+    val refresh: String
 )
 
 data class UserDto(
@@ -39,6 +43,7 @@ data class UserDto(
     val avatar: String? = null,
     val role: String? = null,
     @Json(name = "eco_points") val ecoPoints: Int = 0,
+    @Json(name = "global_rank") val globalRank: Int = 0,
     @Json(name = "total_recycled_kg") val totalRecycledKg: String? = null,
     val level: Int = 1,
     @Json(name = "created_at") val createdAt: String? = null,

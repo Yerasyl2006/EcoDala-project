@@ -1,5 +1,9 @@
 package com.ecodala.feature.scanner.presentation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,19 +38,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ecodala.core.data.dummy.DummyEcoData
 import com.ecodala.core.domain.model.RecyclingPoint
 import com.ecodala.core.domain.model.ScannerResult
 import com.ecodala.core.localization.LocalEcoStrings
+import com.ecodala.core.ui.components.EcoCameraCapturePanel
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
 
@@ -70,9 +80,35 @@ fun AiWasteScannerRoute(
 fun AiWasteScannerScreen(
     uiState: AiWasteScannerUiState,
     onBackClick: () -> Unit,
-    onScanClick: () -> Unit,
+    onScanClick: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    var showCamera by remember { mutableStateOf(false) }
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+        if (granted) {
+            showCamera = true
+        } else {
+            onScanClick(null)
+        }
+    }
+    fun openCameraScanner() {
+        if (hasCameraPermission) {
+            showCamera = true
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -87,8 +123,25 @@ fun AiWasteScannerScreen(
             Spacer(modifier = Modifier.height(18.dp))
             ScannerHeroCard(
                 isScanning = uiState.isScanning,
-                onScanClick = onScanClick
+                onScanClick = ::openCameraScanner
             )
+            if (showCamera) {
+                Spacer(modifier = Modifier.height(14.dp))
+                EcoCameraCapturePanel(
+                    title = "AI camera scanner",
+                    frameHint = "Place one waste item inside the frame",
+                    captureLabel = "Capture and analyze",
+                    onCloseClick = { showCamera = false },
+                    onCaptured = { photoPath ->
+                        showCamera = false
+                        onScanClick(photoPath)
+                    },
+                    onCaptureFailed = {
+                        showCamera = false
+                        onScanClick(null)
+                    }
+                )
+            }
             Spacer(modifier = Modifier.height(18.dp))
             uiState.scannerResult?.let { result ->
                 ScannerResultCard(

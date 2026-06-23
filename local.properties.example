@@ -1,0 +1,13 @@
+# Copy this file to local.properties on your machine.
+# Never commit local.properties with real secrets.
+
+sdk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
+
+# Debug backend can be localhost for emulator or your laptop LAN IP for a real phone.
+ECODALA_DEBUG_API_BASE_URL=http://127.0.0.1:8000/api/
+
+# Production backend must be HTTPS.
+ECODALA_RELEASE_API_BASE_URL=https://api.ecodala.kz/api/
+
+# Google Maps Platform API key.
+GOOGLE_MAPS_API_KEY=put-your-google-maps-api-key-here

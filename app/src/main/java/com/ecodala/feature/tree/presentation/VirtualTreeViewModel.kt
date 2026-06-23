@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ecodala.core.data.dummy.DummyEcoData
 import com.ecodala.core.data.repository.ApiEcoRepository
+import com.ecodala.core.domain.model.EcoRatingCalculator
 import com.ecodala.core.domain.model.TreeGrowthEvent
 import com.ecodala.core.domain.model.VirtualTree
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,22 +31,18 @@ class VirtualTreeViewModel(
     }
 
     fun previewLevel(level: Int) {
-        _tree.value = buildTreeFromPoints(level.coerceIn(0, MAX_TREE_LEVEL) * POINTS_PER_LEVEL)
+        _tree.value = buildTreeFromPoints(level.coerceIn(0, EcoRatingCalculator.MaxLevel) * EcoRatingCalculator.PointsPerLevel)
     }
 
     private fun buildTreeFromPoints(points: Int): VirtualTree {
-        val safePoints = points.coerceAtLeast(0)
-        val level = (safePoints / POINTS_PER_LEVEL).coerceIn(0, MAX_TREE_LEVEL)
-        val isMaxLevel = level == MAX_TREE_LEVEL
-        val currentXp = if (isMaxLevel) POINTS_PER_LEVEL else safePoints % POINTS_PER_LEVEL
-        val progressPercent = if (isMaxLevel) 100 else currentXp * 100 / POINTS_PER_LEVEL
+        val rating = EcoRatingCalculator.calculate(points)
 
         return VirtualTree(
-            level = level,
-            progressPercent = progressPercent,
-            currentXp = currentXp,
-            nextLevelXp = POINTS_PER_LEVEL,
-            growthHistory = buildGrowthHistory(level, safePoints)
+            level = rating.level,
+            progressPercent = rating.progressPercent,
+            currentXp = rating.pointsInCurrentLevel,
+            nextLevelXp = rating.pointsForNextLevel,
+            growthHistory = buildGrowthHistory(rating.level, rating.totalPoints)
         )
     }
 
@@ -62,12 +59,7 @@ class VirtualTreeViewModel(
         return listOf(
             TreeGrowthEvent("Now", "Level $level", "$stageName unlocked with $points EcoPoints"),
             TreeGrowthEvent("EcoPoints", "$points pts", "Every action grows your tree"),
-            TreeGrowthEvent("Goal", "Level 10", "Reach ${POINTS_PER_LEVEL * MAX_TREE_LEVEL} EcoPoints")
+            TreeGrowthEvent("Goal", "Level 10", "Reach ${EcoRatingCalculator.PointsPerLevel * EcoRatingCalculator.MaxLevel} EcoPoints")
         )
-    }
-
-    private companion object {
-        const val POINTS_PER_LEVEL = 100
-        const val MAX_TREE_LEVEL = 10
     }
 }

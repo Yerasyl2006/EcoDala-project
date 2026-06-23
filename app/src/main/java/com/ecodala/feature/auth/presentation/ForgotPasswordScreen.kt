@@ -57,6 +57,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ecodala.core.localization.LocalEcoStrings
 import com.ecodala.core.ui.adaptive.horizontalScreenPadding
 import com.ecodala.core.ui.adaptive.isCompactHeight
+import com.ecodala.core.ui.components.EcoFormError
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
 
@@ -274,11 +275,8 @@ private fun ForgotPasswordForm(
             )
 
             uiState.errorMessage?.let { message ->
-                Text(
-                    text = if (message == "invalid_email") LocalEcoStrings.current.invalidEmail else message,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium
+                EcoFormError(
+                    message = if (message == "invalid_email") LocalEcoStrings.current.invalidEmail else message
                 )
             }
 

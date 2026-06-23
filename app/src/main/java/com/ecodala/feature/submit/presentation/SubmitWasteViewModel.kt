@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ecodala.core.data.dummy.DummyEcoData
 import com.ecodala.core.data.repository.ApiEcoRepository
+import com.ecodala.core.domain.model.EcoRatingCalculator
 import com.ecodala.core.domain.model.RecyclingPoint
 import com.ecodala.core.domain.model.ScannerResult
 import com.ecodala.core.domain.model.WasteType
@@ -17,9 +18,11 @@ data class SubmitWasteUiState(
     val quantity: Int = 5,
     val unit: String = "kg",
     val comment: String = "",
-    val rewardPoints: Int = 50,
+    val rewardPoints: Int = EcoRatingCalculator.pointsForWaste(WasteType.Plastic, 5.0, "kg"),
+    val photoPath: String? = null,
     val isSubmitting: Boolean = false,
-    val submitMessage: String? = null,
+    val submitMessage: SubmitWasteMessage? = null,
+    val submitMessagePoints: Int = 0,
     val aiScan: AiScanUiState = AiScanUiState()
 )
 
@@ -27,8 +30,16 @@ data class AiScanUiState(
     val isScanning: Boolean = false,
     val result: ScannerResult? = null,
     val nearestPoint: RecyclingPoint? = null,
-    val errorMessage: String? = null
+    val errorMessage: SubmitWasteMessage? = null
 )
+
+enum class SubmitWasteMessage {
+    AiScannerUnavailable,
+    CameraCaptureFailed,
+    SubmissionFailed,
+    Approved,
+    SubmittedForReview
+}
 
 class SubmitWasteViewModel(
     private val repository: ApiEcoRepository = ApiEcoRepository()
@@ -37,15 +48,31 @@ class SubmitWasteViewModel(
     val uiState: StateFlow<SubmitWasteUiState> = _uiState
 
     fun onQuantityChange(value: Int) {
-        _uiState.update { it.copy(quantity = value.coerceAtLeast(1)) }
+        _uiState.update {
+            val quantity = value.coerceAtLeast(1)
+            it.copy(
+                quantity = quantity,
+                rewardPoints = calculateRewardPoints(it.wasteType, quantity, it.unit)
+            )
+        }
     }
 
     fun onWasteTypeChange(value: WasteType) {
-        _uiState.update { it.copy(wasteType = value) }
+        _uiState.update {
+            it.copy(
+                wasteType = value,
+                rewardPoints = calculateRewardPoints(value, it.quantity, it.unit)
+            )
+        }
     }
 
     fun onUnitChange(value: String) {
-        _uiState.update { it.copy(unit = value) }
+        _uiState.update {
+            it.copy(
+                unit = value,
+                rewardPoints = calculateRewardPoints(it.wasteType, it.quantity, value)
+            )
+        }
     }
 
     fun onCommentChange(value: String) {
@@ -53,11 +80,23 @@ class SubmitWasteViewModel(
     }
 
     fun increaseQuantity() {
-        _uiState.update { it.copy(quantity = it.quantity + 1) }
+        _uiState.update {
+            val quantity = it.quantity + 1
+            it.copy(
+                quantity = quantity,
+                rewardPoints = calculateRewardPoints(it.wasteType, quantity, it.unit)
+            )
+        }
     }
 
     fun decreaseQuantity() {
-        _uiState.update { it.copy(quantity = (it.quantity - 1).coerceAtLeast(1)) }
+        _uiState.update {
+            val quantity = (it.quantity - 1).coerceAtLeast(1)
+            it.copy(
+                quantity = quantity,
+                rewardPoints = calculateRewardPoints(it.wasteType, quantity, it.unit)
+            )
+        }
     }
 
     fun scanWastePhoto() {
@@ -68,6 +107,7 @@ class SubmitWasteViewModel(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
+                    photoPath = photoSource.takeIf { source -> source.endsWith(".jpg", ignoreCase = true) },
                     aiScan = it.aiScan.copy(
                         isScanning = true,
                         errorMessage = null
@@ -75,12 +115,15 @@ class SubmitWasteViewModel(
                 )
             }
 
-            val result = repository.scanWaste(photoSource).getOrElse { error ->
+            val result = repository.scanWaste(
+                hint = if (photoSource.endsWith(".jpg", ignoreCase = true)) "android-camera" else photoSource,
+                imagePath = photoSource.takeIf { it.endsWith(".jpg", ignoreCase = true) }
+            ).getOrElse { error ->
                 _uiState.update {
                     it.copy(
                         aiScan = AiScanUiState(
                             isScanning = false,
-                            errorMessage = error.message ?: "Scanner is unavailable"
+                            errorMessage = SubmitWasteMessage.AiScannerUnavailable
                         )
                     )
                 }
@@ -93,7 +136,7 @@ class SubmitWasteViewModel(
             _uiState.update {
                 it.copy(
                     wasteType = result.wasteType,
-                    rewardPoints = calculateRewardPoints(result.wasteType, it.quantity),
+                    rewardPoints = calculateRewardPoints(result.wasteType, it.quantity, it.unit),
                     aiScan = AiScanUiState(
                         isScanning = false,
                         result = result,
@@ -112,14 +155,17 @@ class SubmitWasteViewModel(
                 type = state.wasteType,
                 quantity = state.quantity.toDouble(),
                 unit = state.unit,
-                comment = state.comment
+                comment = state.comment,
+                photoPath = state.photoPath
             )
                 .onSuccess { submission ->
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
-                            rewardPoints = submission.earnedPoints,
-                            submitMessage = "Submitted +${submission.earnedPoints} pts"
+                            rewardPoints = submission.earnedPoints.takeIf { points -> points > 0 }
+                                ?: calculateRewardPoints(state.wasteType, state.quantity, state.unit),
+                            submitMessage = buildSubmitMessage(submission.earnedPoints),
+                            submitMessagePoints = submission.earnedPoints
                         )
                     }
                     onSuccess()
@@ -128,27 +174,38 @@ class SubmitWasteViewModel(
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
-                            submitMessage = error.message ?: "Submit failed"
+                            submitMessage = SubmitWasteMessage.SubmissionFailed,
+                            submitMessagePoints = 0
                         )
                     }
                 }
         }
     }
 
-    fun clearScanResult() {
-        _uiState.update { it.copy(aiScan = AiScanUiState()) }
+    fun onCameraCaptureFailed() {
+        _uiState.update {
+            it.copy(
+                aiScan = it.aiScan.copy(
+                    isScanning = false,
+                    errorMessage = SubmitWasteMessage.CameraCaptureFailed
+                )
+            )
+        }
     }
 
-    private fun calculateRewardPoints(type: WasteType, quantity: Int): Int {
-        val multiplier = when (type) {
-            WasteType.Plastic -> 10
-            WasteType.Paper -> 8
-            WasteType.Glass -> 6
-            WasteType.Batteries -> 12
-            WasteType.Electronics -> 18
-            WasteType.Organic -> 5
-            WasteType.Metal -> 14
+    fun clearScanResult() {
+        _uiState.update { it.copy(photoPath = null, aiScan = AiScanUiState()) }
+    }
+
+    private fun calculateRewardPoints(type: WasteType, quantity: Int, unit: String): Int {
+        return EcoRatingCalculator.pointsForWaste(type, quantity.toDouble(), unit)
+    }
+
+    private fun buildSubmitMessage(earnedPoints: Int): SubmitWasteMessage {
+        return if (earnedPoints > 0) {
+            SubmitWasteMessage.Approved
+        } else {
+            SubmitWasteMessage.SubmittedForReview
         }
-        return (quantity * multiplier).coerceAtLeast(10)
     }
 }

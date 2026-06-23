@@ -139,6 +139,8 @@ import com.ecodala.core.localization.type
 import com.ecodala.core.localization.waterStationStatusName
 import com.ecodala.core.localization.waterStationTypeName
 import com.ecodala.core.localization.waterStations
+import com.ecodala.core.ui.components.EcoErrorState
+import com.ecodala.core.ui.components.EcoInlineLoading
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
 import com.google.android.gms.location.LocationCallback
@@ -193,6 +195,7 @@ fun MapRoute(
         onBiotoiletClick = { onBiotoiletDetailsClick(it.id) },
         onWaterStationClick = { onWaterStationDetailsClick(it.id) },
         onEcoReportClick = { onEcoReportDetailsClick(it.id) },
+        onRetryClick = viewModel::refreshMapData,
         modifier = modifier
     )
 }
@@ -215,6 +218,7 @@ fun MapScreen(
     onBiotoiletClick: (Biotoilet) -> Unit,
     onWaterStationClick: (WaterStation) -> Unit,
     onEcoReportClick: (EcoReport) -> Unit,
+    onRetryClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -487,6 +491,19 @@ fun MapScreen(
                     onEnableClick = {
                         context.openLocationSettings()
                     }
+                )
+            }
+
+            if (uiState.isLoading) {
+                Spacer(modifier = Modifier.height(12.dp))
+                EcoInlineLoading(label = "Refreshing map data...")
+            }
+
+            uiState.errorMessage?.let { message ->
+                Spacer(modifier = Modifier.height(12.dp))
+                EcoErrorState(
+                    message = "Showing saved data where available. $message",
+                    onRetryClick = onRetryClick
                 )
             }
         }

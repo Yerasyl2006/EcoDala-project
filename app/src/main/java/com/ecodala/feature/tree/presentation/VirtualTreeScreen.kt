@@ -263,7 +263,7 @@ private fun ProgressCard(tree: VirtualTree) {
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             Text(
-                text = if (maxLevel) "Tree is fully grown" else LocalEcoStrings.current.progressToNextLevel(tree.level + 1),
+                text = if (maxLevel) LocalEcoStrings.current.progressToNextLevel(10) else LocalEcoStrings.current.progressToNextLevel(tree.level + 1),
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold
@@ -293,7 +293,7 @@ private fun ProgressCard(tree: VirtualTree) {
                     fontSize = 12.sp
                 )
                 Text(
-                    text = if (maxLevel) "Max level" else LocalEcoStrings.current.xpToGo(tree.nextLevelXp - tree.currentXp),
+                    text = if (maxLevel) LocalEcoStrings.current.level(10) else LocalEcoStrings.current.xpToGo(tree.nextLevelXp - tree.currentXp),
                     color = EcoGreen,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -343,7 +343,7 @@ private fun NextGoalCard(tree: VirtualTree) {
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = if (maxLevel) "Your tree reached level 10. Keep earning points to protect your forest."
+                    text = if (maxLevel) LocalEcoStrings.current.collectXpGoal(0, 10)
                     else LocalEcoStrings.current.collectXpGoal(tree.nextLevelXp - tree.currentXp, tree.level + 1),
                     color = Color.White.copy(alpha = 0.72f),
                     style = MaterialTheme.typography.bodyMedium
@@ -398,6 +398,8 @@ private fun GrowthHistoryRow(
     event: TreeGrowthEvent,
     isLast: Boolean
 ) {
+    val strings = LocalEcoStrings.current
+
     Row(
         modifier = Modifier.height(if (isLast) 46.dp else 64.dp),
         verticalAlignment = Alignment.Top
@@ -423,19 +425,19 @@ private fun GrowthHistoryRow(
 
         Column {
             Text(
-                text = event.date,
+                text = strings.localizedDate(event.date),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = "${event.title} ${eventIcon(event.title)}",
+                text = "${strings.localizedTreeTitle(event.title)} ${eventIcon(event.title)}",
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = event.description,
+                text = strings.localizedTreeDescription(event.description),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall
             )

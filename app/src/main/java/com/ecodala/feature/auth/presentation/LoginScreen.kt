@@ -76,6 +76,7 @@ import com.ecodala.core.localization.LocalEcoStrings
 import com.ecodala.core.ui.adaptive.horizontalScreenPadding
 import com.ecodala.core.ui.adaptive.isCompactHeight
 import com.ecodala.core.ui.adaptive.isExtraCompactHeight
+import com.ecodala.core.ui.components.EcoFormError
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
 import com.ecodala.R
@@ -205,7 +206,7 @@ fun LoginScreen(
 
                 uiState.errorMessage?.let { message ->
                     Spacer(modifier = Modifier.height(10.dp))
-                    LoginErrorMessage(message = message)
+                    EcoFormError(message = message)
                 }
 
                 Spacer(modifier = Modifier.height(sectionGap))
@@ -222,7 +223,7 @@ fun LoginScreen(
                     )
                 ) {
                     Text(
-                        text = if (uiState.isLoading) "Signing in..." else strings.login,
+                        text = if (uiState.isLoading) strings.signingIn else strings.login,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -388,7 +389,7 @@ private fun LoginOptionsRow(
                 )
             )
             Text(
-                text = "Remember me",
+                text = LocalEcoStrings.current.rememberMe,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelMedium
             )
@@ -516,6 +517,7 @@ private fun SocialAuthDemoDialog(
     onDismiss: () -> Unit,
     onContinue: () -> Unit
 ) {
+    val strings = LocalEcoStrings.current
     val providerName = when (provider) {
         SocialAuthProvider.Google -> "Google"
         SocialAuthProvider.Apple -> "Apple"
@@ -532,7 +534,7 @@ private fun SocialAuthDemoDialog(
         },
         title = {
             Text(
-                text = "Continue with $providerName",
+                text = if (provider == SocialAuthProvider.Google) strings.continueWithGoogle else "${strings.continueAction} $providerName",
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
             )
@@ -554,12 +556,12 @@ private fun SocialAuthDemoDialog(
         },
         confirmButton = {
             TextButton(onClick = onContinue) {
-                Text(text = "Continue", color = EcoGreen, fontWeight = FontWeight.Bold)
+                Text(text = strings.continueAction, color = EcoGreen, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         containerColor = MaterialTheme.colorScheme.surface

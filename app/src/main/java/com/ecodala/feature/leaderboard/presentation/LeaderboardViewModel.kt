@@ -28,13 +28,13 @@ class LeaderboardViewModel(
         .sumOf { it.points }
 
     private val _entries = MutableStateFlow(
-        DummyEcoData.leaderboard.map { entry ->
+        rankEntries(DummyEcoData.leaderboard.map { entry ->
             if (entry.isCurrentUser) {
                 entry.copy(points = currentUserPoints)
             } else {
                 entry
             }
-        }
+        })
     )
     val entries: StateFlow<List<LeaderboardEntry>> = _entries
 
@@ -93,7 +93,13 @@ class LeaderboardViewModel(
     init {
         viewModelScope.launch {
             repository.leaderboard()
-                .onSuccess { if (it.isNotEmpty()) _entries.value = it }
+                .onSuccess { if (it.isNotEmpty()) _entries.value = rankEntries(it) }
         }
+    }
+
+    private fun rankEntries(entries: List<LeaderboardEntry>): List<LeaderboardEntry> {
+        return entries
+            .sortedByDescending { it.points }
+            .mapIndexed { index, entry -> entry.copy(rank = index + 1) }
     }
 }

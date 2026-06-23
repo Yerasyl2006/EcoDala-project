@@ -53,6 +53,17 @@ data class EcoStrings(
     val sendResetLink: String,
     val resetLinkSent: String,
     val invalidEmail: String,
+    val signingIn: String,
+    val creatingAccount: String,
+    val rememberMe: String,
+    val continueAction: String,
+    val cancel: String,
+    val save: String,
+    val profileUpdated: String,
+    val editProfile: String,
+    val editAccountInfo: String,
+    val termsPrivacy: String,
+    val acceptAndContinue: String,
     val hello: (String) -> String,
     val quickActions: String,
     val currentEcoRating: String,
@@ -160,6 +171,23 @@ data class EcoStrings(
     val settingsDataSecurity: String,
     val settingsDataSecuritySubtitle: String,
     val settingsInfo: String,
+    val thisMonthImpact: String,
+    val streakSummary: (Int, Int) -> String,
+    val recycled: String,
+    val submits: String,
+    val wasteLabel: String,
+    val currentUserLeaderboardName: String,
+    val ecoRatingTitle: (Int) -> String,
+    val localizedDate: (String) -> String,
+    val localizedAchievementTitle: (String) -> String,
+    val localizedAchievementDescription: (String) -> String,
+    val localizedTreeTitle: (String) -> String,
+    val localizedTreeDescription: (String) -> String,
+    val supportTopic: (String) -> String,
+    val supportContactTitle: (String) -> String,
+    val supportContactSubtitle: (String) -> String,
+    val supportFaqQuestion: (String) -> String,
+    val supportFaqAnswer: (String) -> String,
     val wasteTypeName: (WasteType) -> String,
     val challengeTypeName: (ChallengeType) -> String,
     val challengeStatusName: (ChallengeStatus) -> String
@@ -427,6 +455,61 @@ fun EcoStrings.ecoReportIssueName(issue: EcoReportIssueType): String {
     }
 }
 
+val EcoStrings.submitScanningWaste: String
+    get() = localized("AI scanner is checking waste...", "AI-сканер проверяет отход...", "AI сканер қалдықты тексеріп жатыр...")
+
+val EcoStrings.submitPhotoAttached: String
+    get() = localized("Photo attached. Tap to retake", "Фото прикреплено. Нажмите, чтобы переснять", "Фото тіркелді. Қайта түсіру үшін басыңыз")
+
+val EcoStrings.submitPhotoUploadSubtitle: String
+    get() = localized("Photo will be uploaded with this submission", "Фото будет отправлено вместе с заявкой", "Фото осы тапсырыспен бірге жіберіледі")
+
+val EcoStrings.submitPhotoScanSubtitle: String
+    get() = localized("Auto-detect type, recyclability and nearest point", "Автоопределение типа, переработки и ближайшего пункта", "Түрін, қайта өңделуін және жақын пунктті автоматты анықтайды")
+
+val EcoStrings.submitFrameHint: String
+    get() = localized("Place the waste item inside the frame", "Поместите отход в рамку", "Қалдықты кадр ішіне қойыңыз")
+
+val EcoStrings.submitCaptureAndScan: String
+    get() = localized("Capture and scan", "Снять и сканировать", "Түсіріп, сканерлеу")
+
+val EcoStrings.submittingWaste: String
+    get() = localized("Submitting...", "Отправка...", "Жіберіліп жатыр...")
+
+val EcoStrings.clear: String
+    get() = localized("Clear", "Очистить", "Тазалау")
+
+fun EcoStrings.confidencePercent(value: Int): String =
+    localized("$value% confidence", "$value% уверенность", "$value% сенімділік")
+
+val EcoStrings.recyclable: String
+    get() = localized("Recyclable", "Перерабатывается", "Қайта өңделеді")
+
+val EcoStrings.acceptedByEcodalaPoints: String
+    get() = localized("Accepted by EcoDala points", "Принимается пунктами EcoDala", "EcoDala пункттері қабылдайды")
+
+val EcoStrings.nearestAcceptedPoint: String
+    get() = localized("Nearest accepted point", "Ближайший пункт приема", "Ең жақын қабылдау пункті")
+
+val EcoStrings.aiScannerUnavailable: String
+    get() = localized("AI scanner is unavailable. Try again later.", "AI-сканер недоступен. Попробуйте позже.", "AI сканер қолжетімсіз. Кейінірек қайталап көріңіз.")
+
+val EcoStrings.cameraCaptureFailed: String
+    get() = localized("Could not capture photo. Try again.", "Не удалось сделать фото. Попробуйте снова.", "Фото түсіру мүмкін болмады. Қайта көріңіз.")
+
+val EcoStrings.submissionFailed: String
+    get() = localized("Submission failed. Check your connection and try again.", "Отправка не удалась. Проверьте соединение и повторите.", "Жіберу сәтсіз болды. Байланысты тексеріп, қайта көріңіз.")
+
+fun EcoStrings.approvedPoints(points: Int): String =
+    localized("Approved +$points pts", "Подтверждено +$points баллов", "Расталды +$points балл")
+
+val EcoStrings.submittedForReview: String
+    get() = localized(
+        "Submitted for review. Points will be added after approval.",
+        "Отправлено на проверку. Баллы добавятся после подтверждения.",
+        "Тексеруге жіберілді. Балл расталғаннан кейін қосылады."
+    )
+
 private val englishEcoStrings = EcoStrings(
     languageTag = "en",
     home = "Home",
@@ -464,13 +547,24 @@ private val englishEcoStrings = EcoStrings(
     sendResetLink = "Send Reset Link",
     resetLinkSent = "Reset link sent",
     invalidEmail = "Enter a valid email address",
+    signingIn = "Signing in...",
+    creatingAccount = "Creating account...",
+    rememberMe = "Remember me",
+    continueAction = "Continue",
+    cancel = "Cancel",
+    save = "Save",
+    profileUpdated = "Profile updated",
+    editProfile = "Edit profile",
+    editAccountInfo = "Edit account info",
+    termsPrivacy = "Terms & Privacy",
+    acceptAndContinue = "Accept and continue",
     hello = { "Hello, $it!" },
     quickActions = "QUICK ACTIONS",
-    currentEcoRating = "CURRENT ECO RATING",
+    currentEcoRating = "Eco rating",
     points = { "$it pts" },
     pointsLabel = "Points",
     level = { "Level $it" },
-    globalRank = { "Global Rank: #$it" },
+    globalRank = { "Leaderboard rank #$it" },
     virtualTreeTitle = "Your Virtual Tree",
     progressToLevel = { progress, level -> "$progress% to Level $level" },
     recentAchievements = "Recent Achievements",
@@ -571,6 +665,120 @@ private val englishEcoStrings = EcoStrings(
     settingsDataSecurity = "Data & Security",
     settingsDataSecuritySubtitle = "Account protection and data export",
     settingsInfo = "Settings are stored locally with DataStore and can be synced with the backend later.",
+    thisMonthImpact = "This Month Impact",
+    streakSummary = { days, points -> "$days day streak - next +$points pts" },
+    recycled = "Recycled",
+    submits = "Submits",
+    wasteLabel = "Waste",
+    currentUserLeaderboardName = "You (EcoWarrior)",
+    ecoRatingTitle = {
+        when (it) {
+            0 -> "Eco Starter"
+            1, 2 -> "Seedling Helper"
+            3, 4 -> "Recycling Builder"
+            5, 6 -> "Green Guardian"
+            7, 8 -> "Eco Champion"
+            9 -> "Forest Keeper"
+            else -> "EcoDala Legend"
+        }
+    },
+    localizedDate = {
+        when (it) {
+            "Today" -> "Today"
+            "Yesterday" -> "Yesterday"
+            "2 days ago" -> "2 days ago"
+            "3 days ago" -> "3 days ago"
+            "Last week" -> "Last week"
+            "Now" -> "Now"
+            "Goal" -> "Goal"
+            "EcoPoints" -> "EcoPoints"
+            else -> it
+        }
+    },
+    localizedAchievementTitle = {
+        when (it) {
+            "First Recycling" -> "First Recycling"
+            "100 Points" -> "100 Points"
+            "Challenge Joined" -> "Challenge Joined"
+            "Tree Keeper" -> "Tree Keeper"
+            "Map Explorer" -> "Map Explorer"
+            "Waste Scanner" -> "Waste Scanner"
+            else -> it
+        }
+    },
+    localizedAchievementDescription = {
+        when (it) {
+            "Completed first recycling task" -> "Completed first recycling task"
+            "Reached 100 eco points" -> "Reached 100 eco points"
+            "Joined your first challenge" -> "Joined your first challenge"
+            "Reach virtual tree level 5" -> "Reach virtual tree level 5"
+            "Visit 5 recycling points" -> "Visit 5 recycling points"
+            "Scan 10 items with AI scanner" -> "Scan 10 items with AI scanner"
+            else -> it
+        }
+    },
+    localizedTreeTitle = {
+        when {
+            it.startsWith("Level ") -> it
+            it == "EcoPoints" -> "EcoPoints"
+            it == "Goal" -> "Goal"
+            it == "Tree" -> "Tree"
+            it == "Young Plant" -> "Young Plant"
+            it == "Seedling" -> "Seedling"
+            else -> it
+        }
+    },
+    localizedTreeDescription = {
+        when {
+            it == "Every action grows your tree" -> "Every action grows your tree"
+            it == "Reached level 4" -> "Reached level 4"
+            it == "New leaves unlocked" -> "New leaves unlocked"
+            it == "Started eco journey" -> "Started eco journey"
+            else -> it
+        }
+    },
+    supportTopic = {
+        when (it) {
+            "Recycling point issue" -> "Recycling point issue"
+            "Waste submission" -> "Waste submission"
+            "Eco points" -> "Eco points"
+            "Account and profile" -> "Account and profile"
+            "AI scanner" -> "AI scanner"
+            else -> it
+        }
+    },
+    supportContactTitle = {
+        when (it) {
+            "EcoDala Hotline" -> "EcoDala Hotline"
+            "WhatsApp Support" -> "WhatsApp Support"
+            "Email" -> "Email"
+            else -> it
+        }
+    },
+    supportContactSubtitle = {
+        when (it) {
+            "Daily, 09:00 - 20:00" -> "Daily, 09:00 - 20:00"
+            "Fast replies in Kazakhstan" -> "Fast replies in Kazakhstan"
+            "Response within 24 hours" -> "Response within 24 hours"
+            else -> it
+        }
+    },
+    supportFaqQuestion = {
+        when (it) {
+            "How are EcoPoints counted?" -> "How are EcoPoints counted?"
+            "Can I suggest a new recycling point?" -> "Can I suggest a new recycling point?"
+            "Which cities are supported?" -> "Which cities are supported?"
+            else -> it
+        }
+    },
+    supportFaqAnswer = {
+        when (it) {
+            "Points are added after a confirmed waste submission or completed challenge." -> "Points are added after a confirmed waste submission or completed challenge."
+            "Yes. Send the address, photo and accepted waste types through support." -> "Yes. Send the address, photo and accepted waste types through support."
+            "The demo flow is prepared for Kazakhstan, starting with Almaty and Astana." -> "The demo flow is prepared for Kazakhstan, starting with Almaty and Astana."
+            else -> it
+        }
+    },
     wasteTypeName = { it.title },
     challengeTypeName = { it.name },
     challengeStatusName = {
@@ -619,13 +827,24 @@ private val russianEcoStrings = englishEcoStrings.copy(
     sendResetLink = "Отправить ссылку",
     resetLinkSent = "Ссылка отправлена",
     invalidEmail = "Введите корректный email",
+    signingIn = "Вход...",
+    creatingAccount = "Создание аккаунта...",
+    rememberMe = "Запомнить меня",
+    continueAction = "Продолжить",
+    cancel = "Отмена",
+    save = "Сохранить",
+    profileUpdated = "Профиль обновлен",
+    editProfile = "Редактировать профиль",
+    editAccountInfo = "Изменить данные аккаунта",
+    termsPrivacy = "Условия и конфиденциальность",
+    acceptAndContinue = "Принять и продолжить",
     hello = { "Привет, $it!" },
     quickActions = "БЫСТРЫЕ ДЕЙСТВИЯ",
-    currentEcoRating = "ТЕКУЩИЙ ЭКО-РЕЙТИНГ",
+    currentEcoRating = "Эко-рейтинг",
     points = { "$it баллов" },
     pointsLabel = "Баллы",
     level = { "Уровень $it" },
-    globalRank = { "Общий рейтинг: #$it" },
+    globalRank = { "Место в рейтинге #$it" },
     virtualTreeTitle = "Ваше виртуальное дерево",
     progressToLevel = { progress, level -> "$progress% до уровня $level" },
     recentAchievements = "Последние достижения",
@@ -726,6 +945,133 @@ private val russianEcoStrings = englishEcoStrings.copy(
     settingsDataSecurity = "Данные и безопасность",
     settingsDataSecuritySubtitle = "Защита аккаунта и экспорт данных",
     settingsInfo = "Настройки сохраняются локально через DataStore, позже можно синхронизировать с backend.",
+    thisMonthImpact = "Вклад за месяц",
+    streakSummary = { days, points -> "$days дн. серия - далее +$points баллов" },
+    recycled = "Переработано",
+    submits = "Сдачи",
+    wasteLabel = "Отходы",
+    currentUserLeaderboardName = "Вы (EcoWarrior)",
+    ecoRatingTitle = {
+        when (it) {
+            0 -> "Эко-старт"
+            1, 2 -> "Помощник ростков"
+            3, 4 -> "Строитель переработки"
+            5, 6 -> "Зеленый защитник"
+            7, 8 -> "Эко-чемпион"
+            9 -> "Хранитель леса"
+            else -> "Легенда EcoDala"
+        }
+    },
+    localizedDate = {
+        when (it) {
+            "Today" -> "Сегодня"
+            "Yesterday" -> "Вчера"
+            "2 days ago" -> "2 дня назад"
+            "3 days ago" -> "3 дня назад"
+            "Last week" -> "На прошлой неделе"
+            "Now" -> "Сейчас"
+            "Goal" -> "Цель"
+            "EcoPoints" -> "Эко-баллы"
+            "24 May" -> "24 мая"
+            "18 May" -> "18 мая"
+            "15 May" -> "15 мая"
+            else -> it
+        }
+    },
+    localizedAchievementTitle = {
+        when (it) {
+            "First Recycling" -> "Первая переработка"
+            "100 Points" -> "100 баллов"
+            "Challenge Joined" -> "Участие в челлендже"
+            "Tree Keeper" -> "Хранитель дерева"
+            "Map Explorer" -> "Исследователь карты"
+            "Waste Scanner" -> "Сканер отходов"
+            else -> it
+        }
+    },
+    localizedAchievementDescription = {
+        when (it) {
+            "Completed first recycling task" -> "Выполнена первая задача по переработке"
+            "Reached 100 eco points" -> "Набрано 100 эко-баллов"
+            "Joined your first challenge" -> "Вы присоединились к первому челленджу"
+            "Reach virtual tree level 5" -> "Достигните 5 уровня виртуального дерева"
+            "Visit 5 recycling points" -> "Посетите 5 пунктов переработки"
+            "Scan 10 items with AI scanner" -> "Отсканируйте 10 предметов AI-сканером"
+            else -> it
+        }
+    },
+    localizedTreeTitle = {
+        when {
+            it.startsWith("Level ") -> it.replace("Level", "Уровень")
+            it == "EcoPoints" -> "Эко-баллы"
+            it == "Goal" -> "Цель"
+            it == "Tree" -> "Дерево"
+            it == "Young Plant" -> "Молодое растение"
+            it == "Seedling" -> "Росток"
+            else -> it
+        }
+    },
+    localizedTreeDescription = {
+        when {
+            it == "Every action grows your tree" -> "Каждое действие выращивает ваше дерево"
+            it == "Reached level 4" -> "Достигнут 4 уровень"
+            it == "New leaves unlocked" -> "Открылись новые листья"
+            it == "Started eco journey" -> "Начало эко-пути"
+            it.startsWith("Reach ") -> it.replace("Reach", "Достигните").replace("EcoPoints", "эко-баллов")
+            it.contains("unlocked with") -> it
+                .replace("Twig", "Веточка")
+                .replace("Seedling", "Росток")
+                .replace("Young tree", "Молодое дерево")
+                .replace("Growing tree", "Растущее дерево")
+                .replace("Dense tree", "Густое дерево")
+                .replace("Eco forest", "Эко-лес")
+                .replace("unlocked with", "открыто с")
+                .replace("EcoPoints", "эко-баллами")
+            else -> it
+        }
+    },
+    supportTopic = {
+        when (it) {
+            "Recycling point issue" -> "Проблема с пунктом переработки"
+            "Waste submission" -> "Сдача отходов"
+            "Eco points" -> "Эко-баллы"
+            "Account and profile" -> "Аккаунт и профиль"
+            "AI scanner" -> "AI-сканер"
+            else -> it
+        }
+    },
+    supportContactTitle = {
+        when (it) {
+            "EcoDala Hotline" -> "Горячая линия EcoDala"
+            "WhatsApp Support" -> "Поддержка WhatsApp"
+            "Email" -> "Email"
+            else -> it
+        }
+    },
+    supportContactSubtitle = {
+        when (it) {
+            "Daily, 09:00 - 20:00" -> "Ежедневно, 09:00 - 20:00"
+            "Fast replies in Kazakhstan" -> "Быстрые ответы по Казахстану"
+            "Response within 24 hours" -> "Ответ в течение 24 часов"
+            else -> it
+        }
+    },
+    supportFaqQuestion = {
+        when (it) {
+            "How are EcoPoints counted?" -> "Как начисляются EcoPoints?"
+            "Can I suggest a new recycling point?" -> "Можно предложить новый пункт переработки?"
+            "Which cities are supported?" -> "Какие города поддерживаются?"
+            else -> it
+        }
+    },
+    supportFaqAnswer = {
+        when (it) {
+            "Points are added after a confirmed waste submission or completed challenge." -> "Баллы добавляются после подтвержденной сдачи отходов или выполненного челленджа."
+            "Yes. Send the address, photo and accepted waste types through support." -> "Да. Отправьте адрес, фото и принимаемые типы отходов через поддержку."
+            "The demo flow is prepared for Kazakhstan, starting with Almaty and Astana." -> "Демо-сценарий подготовлен для Казахстана, начиная с Алматы и Астаны."
+            else -> it
+        }
+    },
     wasteTypeName = {
         when (it) {
             WasteType.Plastic -> "Пластик"
@@ -790,13 +1136,24 @@ private val kazakhEcoStrings = englishEcoStrings.copy(
     sendResetLink = "Сілтеме жіберу",
     resetLinkSent = "Сілтеме жіберілді",
     invalidEmail = "Дұрыс email енгізіңіз",
+    signingIn = "Кіру...",
+    creatingAccount = "Аккаунт ашылуда...",
+    rememberMe = "Мені есте сақтау",
+    continueAction = "Жалғастыру",
+    cancel = "Бас тарту",
+    save = "Сақтау",
+    profileUpdated = "Профиль жаңартылды",
+    editProfile = "Профильді өзгерту",
+    editAccountInfo = "Аккаунт деректерін өзгерту",
+    termsPrivacy = "Шарттар және құпиялылық",
+    acceptAndContinue = "Қабылдау және жалғастыру",
     hello = { "Сәлем, $it!" },
     quickActions = "ЖЫЛДАМ ӘРЕКЕТТЕР",
-    currentEcoRating = "ҚАЗІРГІ ЭКО-РЕЙТИНГ",
+    currentEcoRating = "Эко рейтинг",
     points = { "$it балл" },
     pointsLabel = "Балл",
     level = { "$it-деңгей" },
-    globalRank = { "Жалпы рейтинг: #$it" },
+    globalRank = { "Рейтингтегі орын #$it" },
     virtualTreeTitle = "Виртуалды ағашыңыз",
     progressToLevel = { progress, level -> "$progress% $level-деңгейге дейін" },
     recentAchievements = "Соңғы жетістіктер",
@@ -897,6 +1254,133 @@ private val kazakhEcoStrings = englishEcoStrings.copy(
     settingsDataSecurity = "Деректер және қауіпсіздік",
     settingsDataSecuritySubtitle = "Аккаунтты қорғау және деректерді экспорттау",
     settingsInfo = "Баптаулар DataStore арқылы локалды сақталады, кейін backend-пен синхрондауға болады.",
+    thisMonthImpact = "Осы айдағы үлес",
+    streakSummary = { days, points -> "$days күндік серия - келесі +$points балл" },
+    recycled = "Өңделді",
+    submits = "Тапсырулар",
+    wasteLabel = "Қалдық",
+    currentUserLeaderboardName = "Сіз (EcoWarrior)",
+    ecoRatingTitle = {
+        when (it) {
+            0 -> "Эко бастау"
+            1, 2 -> "Өскін көмекшісі"
+            3, 4 -> "Қайта өңдеу құрастырушысы"
+            5, 6 -> "Жасыл қорғаушы"
+            7, 8 -> "Эко чемпион"
+            9 -> "Орман сақшысы"
+            else -> "EcoDala аңызы"
+        }
+    },
+    localizedDate = {
+        when (it) {
+            "Today" -> "Бүгін"
+            "Yesterday" -> "Кеше"
+            "2 days ago" -> "2 күн бұрын"
+            "3 days ago" -> "3 күн бұрын"
+            "Last week" -> "Өткен апта"
+            "Now" -> "Қазір"
+            "Goal" -> "Мақсат"
+            "EcoPoints" -> "Эко-балл"
+            "24 May" -> "24 мамыр"
+            "18 May" -> "18 мамыр"
+            "15 May" -> "15 мамыр"
+            else -> it
+        }
+    },
+    localizedAchievementTitle = {
+        when (it) {
+            "First Recycling" -> "Алғашқы қайта өңдеу"
+            "100 Points" -> "100 балл"
+            "Challenge Joined" -> "Челленджге қосылды"
+            "Tree Keeper" -> "Ағаш сақшысы"
+            "Map Explorer" -> "Карта зерттеушісі"
+            "Waste Scanner" -> "Қалдық сканері"
+            else -> it
+        }
+    },
+    localizedAchievementDescription = {
+        when (it) {
+            "Completed first recycling task" -> "Алғашқы қайта өңдеу тапсырмасы орындалды"
+            "Reached 100 eco points" -> "100 эко-балл жиналды"
+            "Joined your first challenge" -> "Алғашқы челленджге қосылдыңыз"
+            "Reach virtual tree level 5" -> "Виртуалды ағаштың 5-деңгейіне жетіңіз"
+            "Visit 5 recycling points" -> "5 қайта өңдеу пунктіне барыңыз"
+            "Scan 10 items with AI scanner" -> "AI сканермен 10 затты сканерлеңіз"
+            else -> it
+        }
+    },
+    localizedTreeTitle = {
+        when {
+            it.startsWith("Level ") -> it.replace("Level ", "") + "-деңгей"
+            it == "EcoPoints" -> "Эко-балл"
+            it == "Goal" -> "Мақсат"
+            it == "Tree" -> "Ағаш"
+            it == "Young Plant" -> "Жас өсімдік"
+            it == "Seedling" -> "Көшет"
+            else -> it
+        }
+    },
+    localizedTreeDescription = {
+        when {
+            it == "Every action grows your tree" -> "Әр әрекет ағашыңызды өсіреді"
+            it == "Reached level 4" -> "4-деңгейге жетті"
+            it == "New leaves unlocked" -> "Жаңа жапырақтар ашылды"
+            it == "Started eco journey" -> "Эко сапар басталды"
+            it.startsWith("Reach ") -> it.replace("Reach", "Жетіңіз").replace("EcoPoints", "эко-баллға")
+            it.contains("unlocked with") -> it
+                .replace("Twig", "Бұтақ")
+                .replace("Seedling", "Көшет")
+                .replace("Young tree", "Жас ағаш")
+                .replace("Growing tree", "Өсіп жатқан ағаш")
+                .replace("Dense tree", "Қалың ағаш")
+                .replace("Eco forest", "Эко орман")
+                .replace("unlocked with", "ашылды, жиналған")
+                .replace("EcoPoints", "эко-балл")
+            else -> it
+        }
+    },
+    supportTopic = {
+        when (it) {
+            "Recycling point issue" -> "Қайта өңдеу пункті мәселесі"
+            "Waste submission" -> "Қалдық тапсыру"
+            "Eco points" -> "Эко-балл"
+            "Account and profile" -> "Аккаунт және профиль"
+            "AI scanner" -> "AI сканер"
+            else -> it
+        }
+    },
+    supportContactTitle = {
+        when (it) {
+            "EcoDala Hotline" -> "EcoDala жедел желісі"
+            "WhatsApp Support" -> "WhatsApp қолдауы"
+            "Email" -> "Email"
+            else -> it
+        }
+    },
+    supportContactSubtitle = {
+        when (it) {
+            "Daily, 09:00 - 20:00" -> "Күн сайын, 09:00 - 20:00"
+            "Fast replies in Kazakhstan" -> "Қазақстан бойынша жылдам жауап"
+            "Response within 24 hours" -> "24 сағат ішінде жауап"
+            else -> it
+        }
+    },
+    supportFaqQuestion = {
+        when (it) {
+            "How are EcoPoints counted?" -> "EcoPoints қалай есептеледі?"
+            "Can I suggest a new recycling point?" -> "Жаңа қайта өңдеу пунктін ұсынуға бола ма?"
+            "Which cities are supported?" -> "Қай қалалар қолдайды?"
+            else -> it
+        }
+    },
+    supportFaqAnswer = {
+        when (it) {
+            "Points are added after a confirmed waste submission or completed challenge." -> "Балл расталған қалдық тапсырудан немесе аяқталған челленджден кейін қосылады."
+            "Yes. Send the address, photo and accepted waste types through support." -> "Иә. Мекенжайды, фотоны және қабылданатын қалдық түрлерін қолдау арқылы жіберіңіз."
+            "The demo flow is prepared for Kazakhstan, starting with Almaty and Astana." -> "Демо сценарий Қазақстанға, алдымен Алматы мен Астанаға дайындалған."
+            else -> it
+        }
+    },
     wasteTypeName = {
         when (it) {
             WasteType.Plastic -> "Пластик"

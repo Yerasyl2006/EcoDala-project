@@ -13,7 +13,9 @@ import kotlinx.coroutines.launch
 
 data class RecyclingHistoryUiState(
     val submissions: List<WasteSubmission> = DummyEcoData.wasteSubmissions,
-    val selectedType: WasteType? = null
+    val selectedType: WasteType? = null,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null
 ) {
     val filteredSubmissions: List<WasteSubmission>
         get() = selectedType?.let { type -> submissions.filter { it.wasteType == type } } ?: submissions
@@ -34,9 +36,29 @@ class RecyclingHistoryViewModel(
     val uiState: StateFlow<RecyclingHistoryUiState> = _uiState
 
     init {
+        refresh()
+    }
+
+    fun refresh() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             repository.submissions()
-                .onSuccess { if (it.isNotEmpty()) _uiState.update { state -> state.copy(submissions = it) } }
+                .onSuccess { submissions ->
+                    _uiState.update { state ->
+                        state.copy(
+                            submissions = submissions.takeIf { it.isNotEmpty() } ?: state.submissions,
+                            isLoading = false
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message
+                        )
+                    }
+                }
         }
     }
 

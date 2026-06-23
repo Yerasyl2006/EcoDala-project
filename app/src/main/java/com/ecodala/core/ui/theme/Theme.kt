@@ -1,10 +1,14 @@
 package com.ecodala.core.ui.theme
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
 private val LightColors = lightColorScheme(
     primary = EcoGreen,
@@ -32,6 +36,81 @@ private val DarkColors = darkColorScheme(
     onBackground = Color(0xFFE4EDE2)
 )
 
+private val EcoTypography = Typography(
+    displaySmall = TextStyle(
+        fontSize = 34.sp,
+        lineHeight = 40.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.sp
+    ),
+    headlineLarge = TextStyle(
+        fontSize = 28.sp,
+        lineHeight = 34.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.sp
+    ),
+    headlineMedium = TextStyle(
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.sp
+    ),
+    titleLarge = TextStyle(
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.sp
+    ),
+    titleMedium = TextStyle(
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.sp
+    ),
+    titleSmall = TextStyle(
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.sp
+    ),
+    bodyLarge = TextStyle(
+        fontSize = 16.sp,
+        lineHeight = 23.sp,
+        fontWeight = FontWeight.Normal,
+        letterSpacing = 0.sp
+    ),
+    bodyMedium = TextStyle(
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        fontWeight = FontWeight.Normal,
+        letterSpacing = 0.sp
+    ),
+    bodySmall = TextStyle(
+        fontSize = 12.sp,
+        lineHeight = 17.sp,
+        fontWeight = FontWeight.Normal,
+        letterSpacing = 0.sp
+    ),
+    labelLarge = TextStyle(
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.sp
+    ),
+    labelMedium = TextStyle(
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 0.sp
+    ),
+    labelSmall = TextStyle(
+        fontSize = 11.sp,
+        lineHeight = 15.sp,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 0.sp
+    )
+)
+
 @Composable
 fun EcoDalaTheme(
     darkTheme: Boolean = false,
@@ -39,6 +118,7 @@ fun EcoDalaTheme(
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
+        typography = EcoTypography,
         content = content
     )
 }

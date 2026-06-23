@@ -75,6 +75,7 @@ import com.ecodala.core.localization.LocalEcoStrings
 import com.ecodala.core.ui.adaptive.horizontalScreenPadding
 import com.ecodala.core.ui.adaptive.isCompactHeight
 import com.ecodala.core.ui.adaptive.isExtraCompactHeight
+import com.ecodala.core.ui.components.EcoFormError
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
 import com.ecodala.R
@@ -223,7 +224,7 @@ fun RegisterScreen(
 
                 uiState.errorMessage?.let { message ->
                     Spacer(modifier = Modifier.height(10.dp))
-                    RegisterErrorMessage(message = message)
+                    EcoFormError(message = message)
                 }
 
                 Spacer(modifier = Modifier.height(largeGap))
@@ -241,7 +242,7 @@ fun RegisterScreen(
                     )
                 ) {
                     Text(
-                        text = if (uiState.isLoading) "Creating account..." else strings.createAccount,
+                        text = if (uiState.isLoading) strings.creatingAccount else strings.createAccount,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -557,6 +558,8 @@ private fun TermsPrivacyBottomSheet(
     onDismiss: () -> Unit,
     onAccept: () -> Unit
 ) {
+    val strings = LocalEcoStrings.current
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface
@@ -569,7 +572,7 @@ private fun TermsPrivacyBottomSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
-                text = "Terms & Privacy",
+                text = strings.termsPrivacy,
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
@@ -597,7 +600,7 @@ private fun TermsPrivacyBottomSheet(
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
             ) {
-                Text(text = "Accept and continue", fontWeight = FontWeight.Bold)
+                Text(text = strings.acceptAndContinue, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -673,6 +676,7 @@ private fun SocialSignUpDemoDialog(
     onDismiss: () -> Unit,
     onContinue: () -> Unit
 ) {
+    val strings = LocalEcoStrings.current
     val providerName = when (provider) {
         SocialAuthProvider.Google -> "Google"
         SocialAuthProvider.Apple -> "Apple"
@@ -702,7 +706,7 @@ private fun SocialSignUpDemoDialog(
         },
         title = {
             Text(
-                text = "Sign up with $providerName",
+                text = "${strings.createAccount}: $providerName",
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
             )
@@ -724,12 +728,12 @@ private fun SocialSignUpDemoDialog(
         },
         confirmButton = {
             TextButton(onClick = onContinue) {
-                Text(text = "Continue", color = EcoGreen, fontWeight = FontWeight.Bold)
+                Text(text = strings.continueAction, color = EcoGreen, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         containerColor = MaterialTheme.colorScheme.surface

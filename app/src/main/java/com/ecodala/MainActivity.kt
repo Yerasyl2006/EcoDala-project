@@ -14,6 +14,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
+import com.ecodala.core.data.local.EcoLocalCache
+import com.ecodala.core.logging.AppLogger
 import com.ecodala.core.localization.EcoLocalization
 import com.ecodala.core.navigation.EcoDalaApp
 import com.ecodala.core.session.SessionManager
@@ -23,6 +25,7 @@ import com.ecodala.core.ui.theme.EcoDalaTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppLogger.installCrashLogging()
         enableEdgeToEdge()
         AppSettingsStore.initialize(
             context = applicationContext,
@@ -32,6 +35,7 @@ class MainActivity : ComponentActivity() {
             context = applicationContext,
             scope = lifecycleScope
         )
+        EcoLocalCache.initialize(applicationContext)
 
         setContent {
             val settings by AppSettingsStore.settings.collectAsState()

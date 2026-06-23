@@ -1,6 +1,8 @@
 package com.ecodala.core.data.repository
 
 import com.ecodala.core.data.remote.EcoDalaApi
+import com.ecodala.core.data.local.EcoLocalCache
+import com.ecodala.core.data.remote.MultipartRequestFactory
 import com.ecodala.core.data.remote.NetworkModule
 import com.ecodala.core.data.remote.dto.WasteSubmissionRequestDto
 import com.ecodala.core.data.remote.dto.toApiValue
@@ -9,6 +11,7 @@ import com.ecodala.core.domain.model.Achievement
 import com.ecodala.core.domain.model.Biotoilet
 import com.ecodala.core.domain.model.Challenge
 import com.ecodala.core.domain.model.EcoReport
+import com.ecodala.core.domain.model.EcoReportSeverity
 import com.ecodala.core.domain.model.EcoUser
 import com.ecodala.core.domain.model.LeaderboardEntry
 import com.ecodala.core.domain.model.RecyclingPoint
@@ -22,11 +25,22 @@ class ApiEcoRepository(
     private val api: EcoDalaApi = NetworkModule.api
 ) {
     suspend fun currentUser(): Result<EcoUser> = runCatching {
-        api.getMe().toDomain()
+        runCatching { api.getMe().toDomain() }
+            .onSuccess { EcoLocalCache.saveProfile(it) }
+            .getOrElse { error -> EcoLocalCache.getProfile() ?: throw error }
     }
 
     suspend fun recyclingPoints(wasteType: WasteType? = null): Result<List<RecyclingPoint>> = runCatching {
-        api.getRecyclingPoints(wasteType?.toApiValue()).results.map { it.toDomain() }
+        runCatching { api.getRecyclingPoints(wasteType?.toApiValue()).results.map { it.toDomain() } }
+            .onSuccess { points ->
+                if (wasteType == null) {
+                    val cached = EcoLocalCache.getMapData()
+                    EcoLocalCache.saveMapData(points, cached?.biotoilets.orEmpty(), cached?.waterStations.orEmpty(), cached?.ecoReports.orEmpty())
+                }
+            }
+            .getOrElse { error ->
+                EcoLocalCache.getMapData()?.points?.takeIf { it.isNotEmpty() } ?: throw error
+            }
     }
 
     suspend fun recyclingPoint(id: String): Result<RecyclingPoint> = runCatching {
@@ -34,7 +48,14 @@ class ApiEcoRepository(
     }
 
     suspend fun biotoilets(): Result<List<Biotoilet>> = runCatching {
-        api.getBiotoilets().results.map { it.toDomain() }
+        runCatching { api.getBiotoilets().results.map { it.toDomain() } }
+            .onSuccess { toilets ->
+                val cached = EcoLocalCache.getMapData()
+                EcoLocalCache.saveMapData(cached?.points.orEmpty(), toilets, cached?.waterStations.orEmpty(), cached?.ecoReports.orEmpty())
+            }
+            .getOrElse { error ->
+                EcoLocalCache.getMapData()?.biotoilets?.takeIf { it.isNotEmpty() } ?: throw error
+            }
     }
 
     suspend fun biotoilet(id: String): Result<Biotoilet> = runCatching {
@@ -42,7 +63,14 @@ class ApiEcoRepository(
     }
 
     suspend fun waterStations(): Result<List<WaterStation>> = runCatching {
-        api.getWaterStations().results.map { it.toDomain() }
+        runCatching { api.getWaterStations().results.map { it.toDomain() } }
+            .onSuccess { stations ->
+                val cached = EcoLocalCache.getMapData()
+                EcoLocalCache.saveMapData(cached?.points.orEmpty(), cached?.biotoilets.orEmpty(), stations, cached?.ecoReports.orEmpty())
+            }
+            .getOrElse { error ->
+                EcoLocalCache.getMapData()?.waterStations?.takeIf { it.isNotEmpty() } ?: throw error
+            }
     }
 
     suspend fun waterStation(id: String): Result<WaterStation> = runCatching {
@@ -50,14 +78,27 @@ class ApiEcoRepository(
     }
 
     suspend fun ecoReports(): Result<List<EcoReport>> = runCatching {
-        api.getEcoReports().results.map { it.toDomain() }
+        runCatching { api.getEcoReports().results.map { it.toDomain() } }
+            .onSuccess { reports ->
+                val cached = EcoLocalCache.getMapData()
+                EcoLocalCache.saveMapData(cached?.points.orEmpty(), cached?.biotoilets.orEmpty(), cached?.waterStations.orEmpty(), reports)
+            }
+            .getOrElse { error ->
+                EcoLocalCache.getMapData()?.ecoReports?.takeIf { it.isNotEmpty() } ?: throw error
+            }
     }
 
     suspend fun ecoReport(id: String): Result<EcoReport> = runCatching {
         api.getEcoReport(id).toDomain()
     }
 
-    suspend fun submitWaste(type: WasteType, quantity: Double, unit: String, comment: String?): Result<WasteSubmission> = runCatching {
+    suspend fun submitWaste(
+        type: WasteType,
+        quantity: Double,
+        unit: String,
+        comment: String?,
+        photoPath: String? = null
+    ): Result<WasteSubmission> = runCatching {
         val category = api.getWasteCategories().results
             .firstOrNull { it.slug.equals(type.toApiValue(), ignoreCase = true) }
             ?: error("Waste category '${type.toApiValue()}' was not found on backend.")
@@ -66,21 +107,72 @@ class ApiEcoRepository(
             ?: api.getRecyclingPoints().results.firstOrNull()
             ?: error("No recycling point was found on backend.")
 
-        api.submitWaste(
-            WasteSubmissionRequestDto(
-                category = category.id,
-                recyclingPoint = point.id,
-                weightKg = when (unit.lowercase()) {
-                    "g", "gram", "grams" -> (quantity / 1000.0).toString()
-                    else -> quantity.toString()
-                },
-                comment = comment?.takeIf { it.isNotBlank() }
+        val weightKg = when (unit.lowercase()) {
+            "g", "gram", "grams" -> (quantity / 1000.0).toString()
+            else -> quantity.toString()
+        }
+        val photo = MultipartRequestFactory.imagePart("photo", photoPath)
+
+        if (photo != null) {
+            api.submitWasteMultipart(
+                category = MultipartRequestFactory.text(category.id),
+                recyclingPoint = MultipartRequestFactory.text(point.id),
+                weightKg = MultipartRequestFactory.text(weightKg),
+                comment = MultipartRequestFactory.optionalText(comment),
+                photo = photo
             )
-        ).toDomain(SessionManager.session.value.userId ?: "me")
+        } else {
+            api.submitWaste(
+                WasteSubmissionRequestDto(
+                    category = category.id,
+                    recyclingPoint = point.id,
+                    weightKg = weightKg,
+                    comment = comment?.takeIf { it.isNotBlank() }
+                )
+            )
+        }.toDomain(SessionManager.session.value.userId ?: "me")
+    }
+
+    suspend fun createEcoReport(
+        title: String,
+        address: String,
+        latitude: Double,
+        longitude: Double,
+        wasteDescription: String,
+        severity: EcoReportSeverity,
+        photoPath: String?
+    ): Result<EcoReport> = runCatching {
+        api.createEcoReport(
+            title = MultipartRequestFactory.text(title),
+            address = MultipartRequestFactory.text(address),
+            latitude = MultipartRequestFactory.text(latitude.toString()),
+            longitude = MultipartRequestFactory.text(longitude.toString()),
+            wasteDescription = MultipartRequestFactory.text(wasteDescription),
+            severity = MultipartRequestFactory.text(severity.name.lowercase()),
+            photo = MultipartRequestFactory.imagePart("photo", photoPath)
+        ).toDomain()
+    }
+
+    suspend fun uploadEcoReportPhoto(
+        reportId: String,
+        photoPath: String,
+        comment: String? = null
+    ): Result<EcoReport> = runCatching {
+        val photo = MultipartRequestFactory.imagePart("photo", photoPath)
+            ?: error("Photo file was not found.")
+        api.uploadEcoReportPhoto(
+            id = reportId,
+            photo = photo,
+            comment = MultipartRequestFactory.optionalText(comment)
+        ).toDomain()
     }
 
     suspend fun submissions(): Result<List<WasteSubmission>> = runCatching {
-        api.getWasteSubmissions().results.map { it.toDomain(SessionManager.session.value.userId ?: "me") }
+        runCatching {
+            api.getWasteSubmissions().results.map { it.toDomain(SessionManager.session.value.userId ?: "me") }
+        }
+            .onSuccess { EcoLocalCache.saveHistory(it) }
+            .getOrElse { error -> EcoLocalCache.getHistory()?.takeIf { it.isNotEmpty() } ?: throw error }
     }
 
     suspend fun challenges(): Result<List<Challenge>> = runCatching {
@@ -96,7 +188,15 @@ class ApiEcoRepository(
         api.getLeaderboard().mapIndexed { index, dto -> dto.toDomain(index, currentUserId) }
     }
 
-    suspend fun scanWaste(hint: String): Result<ScannerResult> = runCatching {
-        api.scanWaste(provider = hint.ifBlank { "demo" }).toDomain()
+    suspend fun scanWaste(hint: String, imagePath: String? = null): Result<ScannerResult> = runCatching {
+        val image = MultipartRequestFactory.imagePart("image", imagePath)
+        if (image != null) {
+            api.scanWasteImage(
+                image = image,
+                provider = MultipartRequestFactory.text(hint.ifBlank { "android" })
+            )
+        } else {
+            api.scanWaste(provider = hint.ifBlank { "demo" })
+        }.toDomain()
     }
 }

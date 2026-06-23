@@ -4,14 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview as CameraPreview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -57,7 +49,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -76,12 +67,30 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ecodala.core.domain.model.RecyclingPoint
 import com.ecodala.core.domain.model.ScannerResult
 import com.ecodala.core.domain.model.WasteType
 import com.ecodala.core.localization.LocalEcoStrings
+import com.ecodala.core.localization.acceptedByEcodalaPoints
+import com.ecodala.core.localization.aiScannerUnavailable
+import com.ecodala.core.localization.approvedPoints
+import com.ecodala.core.localization.cameraCaptureFailed
+import com.ecodala.core.localization.clear
+import com.ecodala.core.localization.confidencePercent
+import com.ecodala.core.localization.nearestAcceptedPoint
+import com.ecodala.core.localization.recyclable
+import com.ecodala.core.localization.submissionFailed
+import com.ecodala.core.localization.submitCaptureAndScan
+import com.ecodala.core.localization.submitFrameHint
+import com.ecodala.core.localization.submitPhotoAttached
+import com.ecodala.core.localization.submitPhotoScanSubtitle
+import com.ecodala.core.localization.submitPhotoUploadSubtitle
+import com.ecodala.core.localization.submitScanningWaste
+import com.ecodala.core.localization.submittedForReview
+import com.ecodala.core.localization.submittingWaste
+import com.ecodala.core.ui.components.EcoFormError
+import com.ecodala.core.ui.components.EcoCameraCapturePanel
 import com.ecodala.core.ui.theme.EcoDalaTheme
 import com.ecodala.core.ui.theme.EcoGreen
 
@@ -103,6 +112,7 @@ fun SubmitWasteRoute(
         onCommentChange = viewModel::onCommentChange,
         onScanPhotoClick = viewModel::scanWastePhoto,
         onCapturedPhotoScan = viewModel::scanCapturedPhoto,
+        onCaptureFailed = viewModel::onCameraCaptureFailed,
         onClearScanClick = viewModel::clearScanResult,
         onBackClick = onBackClick,
         onSubmitClick = {
@@ -122,6 +132,7 @@ fun SubmitWasteScreen(
     onCommentChange: (String) -> Unit,
     onScanPhotoClick: () -> Unit,
     onCapturedPhotoScan: (String) -> Unit,
+    onCaptureFailed: () -> Unit,
     onClearScanClick: () -> Unit,
     onBackClick: () -> Unit,
     onSubmitClick: () -> Unit,
@@ -153,10 +164,8 @@ fun SubmitWasteScreen(
         }
     }
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
+    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -203,23 +212,10 @@ fun SubmitWasteScreen(
                 FormSection {
                     FieldLabel(strings.photoConfirmation)
                     PhotoUploadBox(
+                        photoPath = uiState.photoPath,
                         aiScan = uiState.aiScan,
                         onScanPhotoClick = ::openCameraScanner,
                         onClearScanClick = onClearScanClick
-                    )
-                }
-
-                if (showCameraScanner) {
-                    CameraScannerPanel(
-                        onCloseClick = { showCameraScanner = false },
-                        onCaptured = {
-                            showCameraScanner = false
-                            onCapturedPhotoScan("camera-capture")
-                        },
-                        onCaptureFailed = {
-                            showCameraScanner = false
-                            onScanPhotoClick()
-                        }
                     )
                 }
 
@@ -244,7 +240,7 @@ fun SubmitWasteScreen(
                     )
                 ) {
                     Text(
-                        text = if (uiState.isSubmitting) "Submitting..." else strings.submitWithPoints(uiState.rewardPoints),
+                        text = if (uiState.isSubmitting) strings.submittingWaste else strings.submitWithPoints(uiState.rewardPoints),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -256,15 +252,42 @@ fun SubmitWasteScreen(
                     )
                 }
                 uiState.submitMessage?.let { message ->
+                    val isError = message == SubmitWasteMessage.SubmissionFailed
                     Text(
-                        text = message,
-                        color = if (message.contains("failed", ignoreCase = true)) {
+                        text = strings.submitMessageText(message, uiState.submitMessagePoints),
+                        color = if (isError) {
                             MaterialTheme.colorScheme.error
                         } else {
                             EcoGreen
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+            if (showCameraScanner) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.48f))
+                        .padding(20.dp),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    EcoCameraCapturePanel(
+                        title = strings.photoConfirmation,
+                        frameHint = strings.submitFrameHint,
+                        captureLabel = strings.submitCaptureAndScan,
+                        onCloseClick = { showCameraScanner = false },
+                        onCaptured = { photoPath ->
+                            showCameraScanner = false
+                            onCapturedPhotoScan(photoPath)
+                        },
+                        onCaptureFailed = {
+                            showCameraScanner = false
+                            onCaptureFailed()
+                        }
                     )
                 }
             }
@@ -460,10 +483,13 @@ private fun SelectBox(
 
 @Composable
 private fun PhotoUploadBox(
+    photoPath: String?,
     aiScan: AiScanUiState,
     onScanPhotoClick: () -> Unit,
     onClearScanClick: () -> Unit
 ) {
+    val strings = LocalEcoStrings.current
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
             modifier = Modifier
@@ -490,13 +516,21 @@ private fun PhotoUploadBox(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = if (aiScan.isScanning) "AI scanner is checking waste..." else "Take Photo or Scan with AI",
+                    text = when {
+                        aiScan.isScanning -> strings.submitScanningWaste
+                        photoPath != null -> strings.submitPhotoAttached
+                        else -> strings.takePhotoUpload
+                    },
                     color = EcoGreen,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Auto-detect type, recyclability and nearest point",
+                    text = if (photoPath != null) {
+                        strings.submitPhotoUploadSubtitle
+                    } else {
+                        strings.submitPhotoScanSubtitle
+                    },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -510,137 +544,22 @@ private fun PhotoUploadBox(
                 onClearClick = onClearScanClick
             )
         }
+        aiScan.errorMessage?.let { message ->
+            EcoFormError(message = strings.submitMessageText(message, 0))
+        }
     }
 }
 
-@Composable
-private fun CameraScannerPanel(
-    onCloseClick: () -> Unit,
-    onCaptured: () -> Unit,
-    onCaptureFailed: () -> Unit
-) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val imageCapture = remember {
-        ImageCapture.Builder()
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-            .build()
-    }
-    val previewView = remember {
-        PreviewView(context).apply {
-            scaleType = PreviewView.ScaleType.FILL_CENTER
-        }
-    }
-
-    LaunchedEffect(lifecycleOwner) {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-        cameraProviderFuture.addListener(
-            {
-                val cameraProvider = cameraProviderFuture.get()
-                val preview = CameraPreview.Builder().build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
-                runCatching {
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
-                        preview,
-                        imageCapture
-                    )
-                }
-            },
-            ContextCompat.getMainExecutor(context)
-        )
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Camera scanner",
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Icon(
-                imageVector = Icons.Filled.Close,
-                contentDescription = "Close camera",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable(onClick = onCloseClick)
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(260.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.Black)
-        ) {
-            AndroidView(
-                factory = { previewView },
-                modifier = Modifier.fillMaxSize()
-            )
-            Text(
-                text = "Place the waste item inside the frame",
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 14.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color.Black.copy(alpha = 0.52f))
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
-                color = Color.White,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Button(
-            onClick = {
-                imageCapture.takePicture(
-                    ContextCompat.getMainExecutor(context),
-                    object : ImageCapture.OnImageCapturedCallback() {
-                        override fun onCaptureSuccess(image: ImageProxy) {
-                            image.close()
-                            onCaptured()
-                        }
-
-                        override fun onError(exception: ImageCaptureException) {
-                            onCaptureFailed()
-                        }
-                    }
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.CameraAlt,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.size(8.dp))
-            Text(
-                text = "Capture and scan",
-                fontWeight = FontWeight.Bold
-            )
-        }
+private fun com.ecodala.core.localization.EcoStrings.submitMessageText(
+    message: SubmitWasteMessage,
+    points: Int
+): String {
+    return when (message) {
+        SubmitWasteMessage.AiScannerUnavailable -> aiScannerUnavailable
+        SubmitWasteMessage.CameraCaptureFailed -> cameraCaptureFailed
+        SubmitWasteMessage.SubmissionFailed -> submissionFailed
+        SubmitWasteMessage.Approved -> approvedPoints(points)
+        SubmitWasteMessage.SubmittedForReview -> submittedForReview
     }
 }
 
@@ -674,14 +593,14 @@ private fun AiScannerResultCard(
                 )
                 Spacer(modifier = Modifier.size(8.dp))
                 Text(
-                    text = "AI Waste Scanner",
+                text = "AI Waste Scanner",
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
             }
             Text(
-                text = "Clear",
+                text = strings.clear,
                 modifier = Modifier.clickable(onClick = onClearClick),
                 color = EcoGreen,
                 style = MaterialTheme.typography.bodySmall,
@@ -693,13 +612,13 @@ private fun AiScannerResultCard(
             AiInfoPill(
                 icon = Icons.Filled.Recycling,
                 title = strings.wasteTypeName(result.wasteType),
-                subtitle = "${(result.confidence * 100).toInt()}% confidence",
+                subtitle = strings.confidencePercent((result.confidence * 100).toInt()),
                 modifier = Modifier.weight(1f)
             )
             AiInfoPill(
                 icon = Icons.Filled.CheckCircle,
-                title = "Recyclable",
-                subtitle = "Accepted by EcoDala points",
+                title = strings.recyclable,
+                subtitle = strings.acceptedByEcodalaPoints,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -728,7 +647,7 @@ private fun AiScannerResultCard(
                 Spacer(modifier = Modifier.size(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Nearest accepted point",
+                        text = strings.nearestAcceptedPoint,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -848,6 +767,7 @@ private fun SubmitWasteScreenPreview() {
             onCommentChange = {},
             onScanPhotoClick = {},
             onCapturedPhotoScan = {},
+            onCaptureFailed = {},
             onClearScanClick = {},
             onBackClick = {},
             onSubmitClick = {}

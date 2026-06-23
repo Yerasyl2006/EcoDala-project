@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ecodala.core.data.dummy.DummyEcoData
 import com.ecodala.core.data.repository.ApiEcoRepository
 import com.ecodala.core.data.repository.DemoPointsEconomyRepository
+import com.ecodala.core.domain.model.EcoRatingCalculator
 import com.ecodala.core.domain.usecase.GetAchievementProgressUseCase
 import com.ecodala.core.domain.usecase.GetMonthlyImpactUseCase
 import com.ecodala.core.domain.usecase.GetPointsWalletUseCase
@@ -18,7 +19,9 @@ data class HomeUiState(
     val userName: String = "Erasyl",
     val ecoPoints: Int = DummyEcoData.currentUser.ecoPoints,
     val globalRank: Int = DummyEcoData.currentUser.globalRank,
-    val level: Int = DummyEcoData.currentUser.level,
+    val level: Int = EcoRatingCalculator.calculate(DummyEcoData.currentUser.ecoPoints).level,
+    val ratingTitle: String = EcoRatingCalculator.calculate(DummyEcoData.currentUser.ecoPoints).title,
+    val pointsToNextLevel: Int = EcoRatingCalculator.calculate(DummyEcoData.currentUser.ecoPoints).pointsToNextLevel,
     val treeProgressPercent: Int = DummyEcoData.tree.progressPercent,
     val thisMonthPoints: Int = 0,
     val thisMonthKg: Double = 0.0,
@@ -61,11 +64,15 @@ class HomeViewModel(
         viewModelScope.launch {
             backendRepository.currentUser()
                 .onSuccess { user ->
+                    val rating = EcoRatingCalculator.calculate(user.ecoPoints)
                     _uiState.update { state ->
                         state.copy(
                             userName = user.fullName,
                             ecoPoints = user.ecoPoints,
-                            level = user.level,
+                            level = rating.level,
+                            ratingTitle = rating.title,
+                            pointsToNextLevel = rating.pointsToNextLevel,
+                            treeProgressPercent = rating.progressPercent,
                             globalRank = user.globalRank
                         )
                     }
@@ -77,10 +84,13 @@ class HomeViewModel(
             val achievements = getAchievementProgressUseCase(userId).getOrNull()
 
             _uiState.update { state ->
+                val fallbackRating = EcoRatingCalculator.calculate(state.ecoPoints)
                 state.copy(
                     ecoPoints = wallet?.totalPoints ?: state.ecoPoints,
-                    level = wallet?.level ?: state.level,
-                    treeProgressPercent = wallet?.progressToNextLevelPercent ?: state.treeProgressPercent,
+                    level = wallet?.level ?: fallbackRating.level,
+                    ratingTitle = wallet?.ratingTitle ?: fallbackRating.title,
+                    pointsToNextLevel = wallet?.pointsToNextLevel ?: fallbackRating.pointsToNextLevel,
+                    treeProgressPercent = wallet?.progressToNextLevelPercent ?: fallbackRating.progressPercent,
                     thisMonthPoints = wallet?.thisMonthPoints ?: state.thisMonthPoints,
                     challengePoints = wallet?.challengePoints ?: state.challengePoints,
                     achievementBonusPoints = wallet?.achievementBonusPoints ?: state.achievementBonusPoints,

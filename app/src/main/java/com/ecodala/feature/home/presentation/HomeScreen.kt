@@ -18,9 +18,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Leaderboard
@@ -135,7 +135,6 @@ fun HomeScreen(
                 .padding(top = pageTopPadding, bottom = 18.dp)
         ) {
             HomeHeader(
-                userName = uiState.userName,
                 selectedLanguageTag = selectedLanguageTag,
                 onLanguageSelected = onLanguageSelected,
                 onNotificationsClick = onNotificationsClick
@@ -147,6 +146,9 @@ fun HomeScreen(
                 points = uiState.ecoPoints,
                 rank = uiState.globalRank,
                 level = uiState.level,
+                ratingTitle = uiState.ratingTitle,
+                pointsToNextLevel = uiState.pointsToNextLevel,
+                progressPercent = uiState.treeProgressPercent,
                 compactHeight = compactHeight,
                 onClick = onRatingClick
             )
@@ -208,6 +210,8 @@ private fun MonthlyImpactCard(
     streakDays: Int,
     nextRewardPoints: Int
 ) {
+    val strings = LocalEcoStrings.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -222,13 +226,13 @@ private fun MonthlyImpactCard(
             ) {
                 Column {
                     Text(
-                        text = "This Month Impact",
+                        text = strings.thisMonthImpact,
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "$streakDays day streak - next +$nextRewardPoints pts",
+                        text = strings.streakSummary(streakDays, nextRewardPoints),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium
@@ -256,19 +260,19 @@ private fun MonthlyImpactCard(
                 ImpactMetric(
                     icon = Icons.Filled.Recycling,
                     value = "${recycledKg.toInt()} kg",
-                    label = "Recycled",
+                    label = strings.recycled,
                     modifier = Modifier.weight(1f)
                 )
                 ImpactMetric(
                     icon = Icons.Filled.Spa,
                     value = "+$points",
-                    label = "Points",
+                    label = strings.pointsLabel,
                     modifier = Modifier.weight(1f)
                 )
                 ImpactMetric(
                     icon = Icons.Filled.TaskAlt,
                     value = submissions.toString(),
-                    label = "Submits",
+                    label = strings.submits,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -314,25 +318,23 @@ private fun ImpactMetric(
 
 @Composable
 private fun HomeHeader(
-    userName: String,
     selectedLanguageTag: String,
     onLanguageSelected: (String) -> Unit,
     onNotificationsClick: () -> Unit
 ) {
-    val strings = LocalEcoStrings.current
-
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = strings.hello(userName),
-            modifier = Modifier.weight(1f),
-            color = EcoGreen,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "EcoDala",
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -404,6 +406,9 @@ private fun EcoRatingCard(
     points: Int,
     rank: Int,
     level: Int,
+    ratingTitle: String,
+    pointsToNextLevel: Int,
+    progressPercent: Int,
     compactHeight: Boolean,
     onClick: () -> Unit
 ) {
@@ -412,74 +417,141 @@ private fun EcoRatingCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (compactHeight) 118.dp else 142.dp)
+            .height(if (compactHeight) 132.dp else 154.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.verticalGradient(
-                        listOf(Color(0xFF3AA248), Color(0xFF247F32))
+                    Brush.linearGradient(
+                        listOf(Color(0xFF3CA64A), Color(0xFF0F6F2C))
                     )
                 )
-                .padding(if (compactHeight) 16.dp else 20.dp)
+                .padding(if (compactHeight) 14.dp else 18.dp)
         ) {
-            Column(modifier = Modifier.align(Alignment.CenterStart)) {
-                Text(
-                    text = strings.currentEcoRating,
-                    color = Color.White.copy(alpha = 0.72f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = strings.points(points),
-                    color = Color.White,
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Text(
-                text = strings.level(level),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 14.dp, vertical = 5.dp),
-                color = Color.White,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
-
             Row(
-                modifier = Modifier.align(Alignment.BottomStart),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Filled.BarChart,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = strings.globalRank(rank),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = strings.currentEcoRating,
+                        color = Color.White.copy(alpha = 0.82f),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = strings.points(points),
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = strings.ecoRatingTitle(level),
+                        color = Color.White.copy(alpha = 0.86f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                EcoLevelRing(
+                    level = level,
+                    progressPercent = progressPercent
                 )
             }
 
-            Icon(
-                imageVector = Icons.Filled.ArrowForward,
-                contentDescription = null,
-                tint = Color.White,
+            Spacer(modifier = Modifier.height(if (compactHeight) 10.dp else 14.dp))
+
+            LinearProgressIndicator(
+                progress = { progressPercent.coerceIn(0, 100) / 100f },
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(20.dp)
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.24f)
+            )
+
+            Spacer(modifier = Modifier.height(9.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.BarChart,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = strings.globalRank(rank),
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Text(
+                    text = if (pointsToNextLevel == 0) strings.level(10) else strings.xpToGo(pointsToNextLevel),
+                    color = Color.White.copy(alpha = 0.86f),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EcoLevelRing(
+    level: Int,
+    progressPercent: Int
+) {
+    Box(
+        modifier = Modifier.size(62.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val stroke = 6.dp.toPx()
+            drawCircle(
+                color = Color.White.copy(alpha = 0.22f),
+                radius = (size.minDimension - stroke) / 2f,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke)
+            )
+            drawArc(
+                color = Color.White,
+                startAngle = -90f,
+                sweepAngle = progressPercent.coerceIn(0, 100) * 3.6f,
+                useCenter = false,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = stroke,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                ),
+                topLeft = Offset(stroke / 2f, stroke / 2f),
+                size = Size(size.width - stroke, size.height - stroke)
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = level.toString(),
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = LocalEcoStrings.current.level(level).filter { it.isLetter() }.uppercase(),
+                color = Color.White.copy(alpha = 0.72f),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -652,7 +724,7 @@ private fun RecentAchievementsCard(
                     fontWeight = FontWeight.Bold
                 )
                 Icon(
-                    imageVector = Icons.Filled.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Open achievements",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -670,6 +742,8 @@ private fun RecentAchievementsCard(
 
 @Composable
 private fun AchievementRow(achievement: HomeAchievementUi) {
+    val strings = LocalEcoStrings.current
+
     Row(
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -697,17 +771,27 @@ private fun AchievementRow(achievement: HomeAchievementUi) {
 
         Column {
             Text(
-                text = achievement.title,
+                text = strings.localizedAchievementTitle(achievement.title),
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = achievement.subtitle,
+                text = localizeAchievementSubtitle(achievement.subtitle, strings),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall
             )
         }
+    }
+}
+
+private fun localizeAchievementSubtitle(value: String, strings: com.ecodala.core.localization.EcoStrings): String {
+    if (value.isBlank()) return value
+    val parts = value.split(" - ", limit = 2)
+    return if (parts.size == 2) {
+        "${parts[0].replace("pts", strings.pointsLabel.lowercase())} - ${strings.localizedDate(parts[1])}"
+    } else {
+        strings.localizedDate(value)
     }
 }
 

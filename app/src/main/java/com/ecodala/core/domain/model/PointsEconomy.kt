@@ -23,7 +23,10 @@ data class PointsWallet(
     val challengePoints: Int,
     val achievementBonusPoints: Int,
     val level: Int,
-    val progressToNextLevelPercent: Int
+    val progressToNextLevelPercent: Int,
+    val pointsInCurrentLevel: Int = 0,
+    val pointsToNextLevel: Int = 0,
+    val ratingTitle: String = ""
 )
 
 data class MonthlyImpact(

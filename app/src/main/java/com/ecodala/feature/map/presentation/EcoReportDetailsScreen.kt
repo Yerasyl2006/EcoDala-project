@@ -1,5 +1,9 @@
 package com.ecodala.feature.map.presentation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,9 +53,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.ecodala.core.data.dummy.DummyEcoData
 import com.ecodala.core.data.repository.ApiEcoRepository
 import com.ecodala.core.domain.model.EcoReport
@@ -75,7 +82,9 @@ import com.ecodala.core.localization.uploadUpdatedPhoto
 import com.ecodala.core.localization.verifications
 import com.ecodala.core.localization.verifiedWithPoints
 import com.ecodala.core.localization.verifyCondition
+import com.ecodala.core.ui.components.EcoCameraCapturePanel
 import com.ecodala.core.ui.theme.EcoGreen
+import kotlinx.coroutines.launch
 
 @Composable
 fun EcoReportDetailsRoute(
@@ -83,15 +92,30 @@ fun EcoReportDetailsRoute(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scope = rememberCoroutineScope()
+    val repository = remember { ApiEcoRepository() }
     var report by remember {
         mutableStateOf(DummyEcoData.ecoReports.firstOrNull { it.id == reportId } ?: DummyEcoData.ecoReports.first())
     }
     LaunchedEffect(reportId) {
         reportId?.let { id ->
-            ApiEcoRepository().ecoReport(id).onSuccess { report = it }
+            repository.ecoReport(id).onSuccess { report = it }
         }
     }
-    EcoReportDetailsScreen(report = report, onBackClick = onBackClick, modifier = modifier)
+    EcoReportDetailsScreen(
+        report = report,
+        onBackClick = onBackClick,
+        onPhotoCaptured = { photoPath ->
+            scope.launch {
+                repository.uploadEcoReportPhoto(
+                    reportId = report.id,
+                    photoPath = photoPath,
+                    comment = "Updated photo from Android"
+                ).onSuccess { report = it }
+            }
+        },
+        modifier = modifier
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -99,12 +123,34 @@ fun EcoReportDetailsRoute(
 fun EcoReportDetailsScreen(
     report: EcoReport,
     onBackClick: () -> Unit,
+    onPhotoCaptured: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedIssue by remember { mutableStateOf<EcoReportIssueType?>(null) }
     var verified by remember { mutableStateOf(false) }
     var reportSent by remember { mutableStateOf(false) }
+    var showPhotoCapture by remember { mutableStateOf(false) }
     val strings = LocalEcoStrings.current
+    val context = LocalContext.current
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+        showPhotoCapture = granted
+    }
+    fun openPhotoCapture() {
+        if (hasCameraPermission) {
+            showPhotoCapture = true
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
 
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
@@ -161,6 +207,34 @@ fun EcoReportDetailsScreen(
                         Spacer(modifier = Modifier.size(10.dp))
                         Text(strings.uploadUpdatedPhoto, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
                         Text("+20 pts", color = EcoGreen, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = ::openPhotoCapture,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = null)
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(strings.uploadUpdatedPhoto, fontWeight = FontWeight.Bold)
+                    }
+                    if (showPhotoCapture) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        EcoCameraCapturePanel(
+                            title = strings.ecoReports,
+                            frameHint = strings.uploadUpdatedPhoto,
+                            captureLabel = strings.sendUpdateToAdministration,
+                            onCloseClick = { showPhotoCapture = false },
+                            onCaptured = { photoPath ->
+                                showPhotoCapture = false
+                                onPhotoCaptured(photoPath)
+                                reportSent = true
+                            },
+                            onCaptureFailed = {
+                                showPhotoCapture = false
+                            }
+                        )
                     }
                 }
 

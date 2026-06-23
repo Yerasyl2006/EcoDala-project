@@ -22,10 +22,13 @@ class AiWasteScannerViewModel(
     private val _uiState = MutableStateFlow(AiWasteScannerUiState())
     val uiState: StateFlow<AiWasteScannerUiState> = _uiState
 
-    fun scanWaste() {
+    fun scanWaste(photoPath: String? = null) {
         viewModelScope.launch {
             _uiState.value = AiWasteScannerUiState(isScanning = true)
-            val result = repository.scanWaste("scanner-screen-capture").getOrElse {
+            val result = repository.scanWaste(
+                hint = if (photoPath.isNullOrBlank()) "scanner-screen-capture" else "android-camera",
+                imagePath = photoPath
+            ).getOrElse {
                 DummyEcoData.scannerResult
             }
             val nearestPoint = DummyEcoData.recyclingPoints

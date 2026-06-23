@@ -30,7 +30,7 @@ fun UserDto.toDomain(): EcoUser {
         email = email,
         avatarUrl = avatar,
         ecoPoints = ecoPoints,
-        globalRank = 0,
+        globalRank = globalRank,
         level = level,
         joinedAt = createdAt ?: "Backend"
     )
